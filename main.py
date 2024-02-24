@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 import uvicorn
 
-from auth.authentication import router
+from auth import authentication, employee
 from database.db import ENGINE, SESSIONLOCAL
 from database import models
 
@@ -21,7 +21,8 @@ def get_db():
 def root():
     return "OK"
 
-app.include_router(router)
+app.include_router(authentication.router)
+app.include_router(employee.router)
 
 if __name__ == "__main__":
     uvicorn.run(app="main:app", reload=True)

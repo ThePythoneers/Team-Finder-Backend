@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, UUID, ForeignKey
 from database.db import Base
+import uuid
 
 
 class OrganizationOwners(Base):
@@ -9,8 +10,8 @@ class OrganizationOwners(Base):
     only one owner, the one that created the organization when he created his account.
     """
     __tablename__ = "OrganizationOwners"
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String)
+    uuid = Column(UUID, default=uuid.uuid4, primary_key=True)
+    username = Column(String, index = True)
     email = Column(String)
     hashed_password = Column(String)
     organization_name = Column(String)
@@ -18,9 +19,28 @@ class OrganizationOwners(Base):
 
     def __repr__(self):
         return {
-            "id": str(self.id),
+            "uuid": str(self.uuid),
             "username": str(self.username),
             "hashed_password": str(self.hashed_password),
             "organization_name": str(self.organization_name),
             "hq_address": str(self.hq_address)
         }
+    
+class Organizations(Base):
+    """
+        This is the table for the organization which will be created at the same time as the Owner.
+    """
+    __tablename__ = "Organizations"
+    link_ref =  Column(String, primary_key=True)
+    name = Column(String, index=True)
+    owner = Column(UUID, ForeignKey(OrganizationOwners.uuid))
+    members = Column(UUID)
+
+
+class Employees(Base):
+    __tablename__ = "Employees"
+    uuid = Column(UUID, default=uuid.uuid4, primary_key=True)
+    name = Column(String)
+    email = Column(String)
+    hashed_password = Column(String)
+    

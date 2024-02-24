@@ -10,6 +10,7 @@ from jose import jwt, JWTError
 from auth.models import OrganizationOwner, Token
 from database.db import ENGINE, SESSIONLOCAL
 from database import models
+import string, random
 
 router = APIRouter(prefix="/auth")
 
@@ -43,8 +44,17 @@ async def create_user(db: db_dependency, create_user_request: OrganizationOwner)
         db.commit()
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"There is already an account created with this email")
+    
+    create_organization_model = models.Organizations(
+        link_ref = create_link_ref(10),
+        name = create_user_model.organization_name,
+        owner = create_user_model.uuid
+    )
+    db.add(create_organization_model)
+    db.commit()
 
-
+def create_link_ref(length: int, chars = string.ascii_lowercase + string.ascii_uppercase + string.digits):
+    return "".join(random.choice(chars) for i in range(length))
 
 
 @router.post("/token", response_model=Token)
@@ -54,7 +64,7 @@ async def login_for_access_token(form_data:Annotated[OAuth2PasswordRequestForm, 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail= "Name or Password is incorrect.")
 
-    token = create_access_token(user.username, user.id, timedelta(minutes=20))
+    token = create_access_token(user.username, user.uuid, timedelta(minutes=20))
     return {"access_token": token, "token_type": "bearer"}
 
 def authenticate_user(username: str, password: str, db):
@@ -65,8 +75,8 @@ def authenticate_user(username: str, password: str, db):
         return False
     return user
 
-def create_access_token(username: str, user_id: int, expires_delta: timedelta):
-    encode = {"sub": username, "id": user_id}
+def create_access_token(username: str, user_id: str, expires_delta: timedelta):
+    encode = {"sub": username, "id": str(user_id)}
     expires = datetime.utcnow() + expires_delta
     encode.update({"exp": expires})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
