@@ -30,5 +30,5 @@ python3 main.py
 Please refer to the individual directories for more specific instructions.
 
 ## License
-This project is licensed under the terms of the MIT license. See [LICENSE](LICENSE) for more details.
+This project is licensed under the terms of the APACHE license. See [LICENSE](LICENSE) for more details.
 

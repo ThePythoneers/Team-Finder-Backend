@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware 
 from typing import Annotated
 from sqlalchemy.orm import Session
 import uvicorn
@@ -20,17 +21,22 @@ def get_db():
     finally:
         db.close()
 
-user_roles = ["Employee","Organization Admin","Department Manager", "Project Manager"]
 db_dependency = Annotated[Session, Depends(get_db)]
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+app.include_router(authentication.router)
+app.include_router(profile.router)
 
 @app.get("/")
 def root():
     return "OK"
-
-app.include_router(authentication.router)
-app.include_router(profile.router)
 
 if __name__ == "__main__":
     uvicorn.run(app="main:app", reload=True)

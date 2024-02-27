@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 
-
 class Users(BaseModel):
     username: str
     type_: str
@@ -13,3 +12,4 @@ class Users(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    user: dict

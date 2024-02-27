@@ -63,7 +63,7 @@ def create_link_ref(length: int, chars = string.ascii_lowercase + string.ascii_u
     return "".join(random.choice(chars) for i in range(length))
 
 
-@router.post("/token", response_model=Token)
+@router.post("/token")
 async def login_for_access_token(form_data:Annotated[OAuth2PasswordRequestForm, Depends()],db: db_dependency):
     user = authenticate_user(form_data.username, form_data.password, db)
 
@@ -71,7 +71,15 @@ async def login_for_access_token(form_data:Annotated[OAuth2PasswordRequestForm, 
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail= "Name or Password is incorrect.")
 
     token = create_access_token(user.username, user.uuid, timedelta(minutes=20))
-    return {"access_token": token, "token_type": "bearer"}
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        user: {
+            "uuid": user.uuid,
+            "name": user.username,
+            "email": user.email
+        }  
+    }
 
 def authenticate_user(email: str, password: str, db):
     user = db.query(models.Users).filter(models.Users.email == email).first()
