@@ -1,8 +1,7 @@
 from pydantic import BaseModel
 
-class Users(BaseModel):
+class RegisterOwner(BaseModel):
     username: str
-    type_: str
     email: str
     password: str
     organization_name: str

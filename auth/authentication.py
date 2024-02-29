@@ -7,10 +7,10 @@ from starlette import status
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
-from auth.models import Users, Token
+from auth.models import RegisterOwner, Token
 from database.db import ENGINE, SESSIONLOCAL
 from database import models
-import string, random
+import string, random, uuid
 
 router = APIRouter(prefix="/auth")
 
@@ -30,34 +30,58 @@ def get_db():
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
-async def create_user(db: db_dependency, create_user_request: Users):
-    if not create_user_request.type_ in ["employee", "owner"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed request: This type of account does not exist.")
+@router.post("/register/employee/{user_id}", status_code=status.HTTP_201_CREATED)
+async def create_user_employee(db:db_dependency, create_user_request: RegisterOwner, user_id: str):
     
-    create_user_model = models.Users(
+    if db.query(models.User).filter(models.User.email == create_user_request.email).first():
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"There is already an account created with this email")
+       
+    user_id = uuid.uuid4()
+    create_user_model = models.User(
+        id = user_id,
         username = create_user_request.username,
-        type_ = create_user_request.type_,
         email = create_user_request.email,
-        organization_name = create_user_request.organization_name,
-        hq_address = create_user_request.hq_address,
-        hashed_password = bcrypt_context.hash(create_user_request.password)
+        hashed_password = bcrypt_context.hash(create_user_request.password),
     )
+    organization = db.query(models.Organization).filter_by(custom_link = user_id).first()
+    organization.employees.append(create_user_model)
+    db.add(create_user_model)
+    db.add(organization)
+    db.commit()
 
-    if not db.query(models.Users).filter(models.Users.email == create_user_model.email).first():
+
+@router.post("/register/organization", status_code=status.HTTP_201_CREATED)
+async def create_user(db: db_dependency, create_user_request: RegisterOwner):   
+    user_id = uuid.uuid4()
+    organization_id = uuid.uuid4()
+
+    create_user_model = models.User(
+        id = user_id,
+        username = create_user_request.username,
+        email = create_user_request.email,
+        hashed_password = bcrypt_context.hash(create_user_request.password),
+    )
+    
+    if not db.query(models.User).filter(models.User.email == create_user_model.email).first():
         db.add(create_user_model)
-        db.commit()
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"There is already an account created with this email")
     
-    if create_user_request.type_ == "owner":
-        create_organization_model = models.Organizations(
-            link_ref = create_link_ref(10),
-            name = create_user_model.organization_name,
-            owner = create_user_model.uuid
-        )
-        db.add(create_organization_model)
-        db.commit()
+    create_organization_model = models.Organization(
+        id = organization_id,
+        custom_link = create_link_ref(10),
+        owner_id = user_id,
+        organization_name = create_user_request.organization_name,
+        hq_address = create_user_request.hq_address,
+    )
+    create_organization_model.employees.append(create_user_model)
+    db.add(create_organization_model)
+    db.commit()
+
+    db.query(models.User).filter_by(id = create_user_model.id).first().organization_id = create_organization_model.id
+    db.commit()
+
+
 
 def create_link_ref(length: int, chars = string.ascii_lowercase + string.ascii_uppercase + string.digits):
     return "".join(random.choice(chars) for i in range(length))
@@ -70,19 +94,19 @@ async def login_for_access_token(form_data:Annotated[OAuth2PasswordRequestForm, 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail= "Name or Password is incorrect.")
 
-    token = create_access_token(user.username, user.uuid, timedelta(minutes=20))
+    token = create_access_token(user.username, user.id, timedelta(minutes=20))
     return {
         "access_token": token,
         "token_type": "bearer",
-        user: {
-            "uuid": user.uuid,
+        "user": {
+            "uuid": user.id,
             "name": user.username,
             "email": user.email
         }  
     }
 
 def authenticate_user(email: str, password: str, db):
-    user = db.query(models.Users).filter(models.Users.email == email).first()
+    user = db.query(models.User).filter(models.User.email == email).first()
     if not user:
         return False
     if not bcrypt_context.verify(password, user.hashed_password):
@@ -102,7 +126,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
         user_id: int = payload.get("id")
         if username is None or user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user.")
-            return {'username': username, 'id': user_id}
+        return {'username': username, 'id': user_id}
     except JWTError:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail = "JWTERROR, WTF?")

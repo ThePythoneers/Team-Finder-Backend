@@ -1,5 +1,6 @@
 from pydantic import BaseModel
+from uuid import UUID
 
 class RoleRequestModel(BaseModel):
     user_id: str
-    roles: list
+    role_id: str

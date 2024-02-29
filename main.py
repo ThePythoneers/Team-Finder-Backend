@@ -8,6 +8,7 @@ from auth import authentication
 from account import profile
 from database.db import ENGINE, SESSIONLOCAL
 from database import models
+from custom_roles import croles
 
 app = FastAPI()
 
@@ -33,6 +34,7 @@ app.add_middleware(
 
 app.include_router(authentication.router)
 app.include_router(profile.router)
+app.include_router(croles.router)
 
 @app.get("/")
 def root():

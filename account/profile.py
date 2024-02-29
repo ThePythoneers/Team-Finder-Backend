@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from database.models import User
 from auth import authentication
 from account.models import RoleRequestModel
+from database.models import Custom_Roles
 
 router = APIRouter(prefix = "/user")
 
@@ -21,22 +22,22 @@ user_dependency = Annotated[dict, Depends(authentication.get_current_user)]
 @router.post("/{user}")
 async def get_user_info(db: db_dependency,auth: user_dependency, user: str):
 
-    user = db.query(User).filter(User.uuid == user).first()
+    user = db.query(User).filter(User.id == user).first()
     if not user:
         raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail = "This account does not exist.")
     user_data = {
         "name": user.username,
         "email": user.email,
-        "roles": user.roles,
-        "organization": user.organization_name,
-        "address": user.hq_address,
-        "type": user.type_
+        "organization": user.organization.organization_name,
+        "address": user.organization.hq_address,
     }
     return user_data
 
-@router.post("/roles/edit")
-async def set_user_role(db: db_dependency, auth: user_dependency, roles: RoleRequestModel):
-    # user = db.query(User).filter(User.uuid == roles.user_id).first()
-    # user.roles = "".join(i for i in roles.roles)
-    # db.commit()
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED)
+@router.post("/customroles/add", status_code=status.HTTP_202_ACCEPTED)
+async def set_user_custom_role(db: db_dependency, auth: user_dependency, request: RoleRequestModel):
+    role = db.query(Custom_Roles).filter_by(id = request.role_id).first()
+    if not role:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This role does not exist.")
+    role.employees.append(db.query(User).filter_by(id = request.user_id).first())
+
+    db.commit()
