@@ -7,7 +7,10 @@ from auth import authentication
 from account.models import RoleRequestModel
 from database.models import Custom_Roles
 
-router = APIRouter(prefix = "/user")
+router = APIRouter(
+    tags = {"User profile"},
+    prefix = "/user"
+    )
 
 def get_db():
     try:
@@ -19,7 +22,7 @@ def get_db():
 db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(authentication.get_current_user)]
 
-@router.post("/{user}")
+@router.get("/{user}")
 async def get_user_info(db: db_dependency,auth: user_dependency, user: str):
 
     user = db.query(User).filter(User.id == user).first()

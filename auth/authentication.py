@@ -7,12 +7,16 @@ from starlette import status
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
-from auth.models import RegisterOwner, Token
+from auth.models import RegisterOwner, RegisterEmployee, Token
 from database.db import ENGINE, SESSIONLOCAL
 from database import models
 import string, random, uuid
 
-router = APIRouter(prefix="/auth")
+
+router = APIRouter(
+    tags={"Authentication"},
+    prefix="/auth"
+    )
 
 SECRET_KEY = "1CD6923F4C8F1B56A775FDF2C0F95C51601F43DBD6376A11954786242F76FFFC28017BAA0457939D04F558AA6F0D09EE92076FD1CC6CBB39F8E4B8C2F2FE5500"
 ALGORITHM = "HS256"
@@ -30,9 +34,8 @@ def get_db():
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
-@router.post("/register/employee/{user_id}", status_code=status.HTTP_201_CREATED)
-async def create_user_employee(db:db_dependency, create_user_request: RegisterOwner, user_id: str):
-    
+@router.post("/employee/{linkref}", status_code=status.HTTP_201_CREATED)
+async def create_user_employee(db:db_dependency, create_user_request: RegisterEmployee, linkref: str):
     if db.query(models.User).filter(models.User.email == create_user_request.email).first():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"There is already an account created with this email")
        
@@ -43,7 +46,7 @@ async def create_user_employee(db:db_dependency, create_user_request: RegisterOw
         email = create_user_request.email,
         hashed_password = bcrypt_context.hash(create_user_request.password),
     )
-    organization = db.query(models.Organization).filter_by(custom_link = user_id).first()
+    organization = db.query(models.Organization).filter_by(custom_link = linkref).first()
     organization.employees.append(create_user_model)
     db.add(create_user_model)
     db.add(organization)

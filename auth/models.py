@@ -7,6 +7,10 @@ class RegisterOwner(BaseModel):
     organization_name: str
     hq_address: str
 
+class RegisterEmployee(BaseModel):
+    username: str
+    email: str
+    password: str
 
 class Token(BaseModel):
     access_token: str
