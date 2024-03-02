@@ -1,16 +1,18 @@
 from datetime import timedelta, datetime
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from starlette import status
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
-from auth.models import RegisterOwner, RegisterEmployee, Token
+from auth.baseModels import RegisterOwner, RegisterEmployee, Token
 from database.db import ENGINE, SESSIONLOCAL
 from database import models
 import string, random, uuid
+from utils.validation import validate_email, validate_password
 
 
 router = APIRouter(
@@ -34,14 +36,34 @@ def get_db():
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
-@router.post("/employee/{linkref}", status_code=status.HTTP_201_CREATED)
-async def create_user_employee(db:db_dependency, create_user_request: RegisterEmployee, linkref: str):
+#-TODO remove async- 
+#TODO json response instead of httpexception
+
+@router.post("/employee/{linkref}")
+def create_user_employee(db:db_dependency, create_user_request: RegisterEmployee, linkref: str):
+    
+    if not validate_email(create_user_request.email):
+        return JSONResponse(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            content = "invalid e-mail"
+            )
+    
+    if not validate_password(create_user_request.password):
+        return JSONResponse(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            content = "invalid password"
+            )
+
     if db.query(models.User).filter(models.User.email == create_user_request.email).first():
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"There is already an account created with this email")
-       
-    user_id = uuid.uuid4()
+        return JSONResponse(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            content = "e-mail already exists"
+            )
+        #raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"There is already an account created with this email"
+        pass
+
     create_user_model = models.User(
-        id = user_id,
+        id = uuid.uuid4(),
         username = create_user_request.username,
         email = create_user_request.email,
         hashed_password = bcrypt_context.hash(create_user_request.password),
@@ -51,12 +73,33 @@ async def create_user_employee(db:db_dependency, create_user_request: RegisterEm
     db.add(create_user_model)
     db.add(organization)
     db.commit()
+    #TODO return JSONResponse()
 
 
 @router.post("/register/organization", status_code=status.HTTP_201_CREATED)
-async def create_user(db: db_dependency, create_user_request: RegisterOwner):   
+def create_user(db: db_dependency, create_user_request: RegisterOwner):   
+
+    if not validate_email(create_user_request.email):
+        return JSONResponse(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            content = "invalid e-mail"
+            )
+
+    if not validate_password(create_user_request.password):
+        return JSONResponse(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            content = "invalid password"
+            )
+    
+    if not db.query(models.User).filter(models.User.email == create_user_request.email).first():
+        db.add(create_user_model)
+    else:
+        return JSONResponse(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            content = "e-mail already exists"
+            )
+
     user_id = uuid.uuid4()
-    organization_id = uuid.uuid4()
 
     create_user_model = models.User(
         id = user_id,
@@ -65,13 +108,8 @@ async def create_user(db: db_dependency, create_user_request: RegisterOwner):
         hashed_password = bcrypt_context.hash(create_user_request.password),
     )
     
-    if not db.query(models.User).filter(models.User.email == create_user_model.email).first():
-        db.add(create_user_model)
-    else:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"There is already an account created with this email")
-    
     create_organization_model = models.Organization(
-        id = organization_id,
+        id = uuid.uuid4(),
         custom_link = create_link_ref(10),
         owner_id = user_id,
         organization_name = create_user_request.organization_name,
@@ -84,6 +122,11 @@ async def create_user(db: db_dependency, create_user_request: RegisterOwner):
     db.query(models.User).filter_by(id = create_user_model.id).first().organization_id = create_organization_model.id
     db.commit()
 
+    return JSONResponse(
+        status_code = 201,
+        content = "Account created."
+    )
+
 
 
 def create_link_ref(length: int, chars = string.ascii_lowercase + string.ascii_uppercase + string.digits):
@@ -91,22 +134,26 @@ def create_link_ref(length: int, chars = string.ascii_lowercase + string.ascii_u
 
 
 @router.post("/token")
-async def login_for_access_token(form_data:Annotated[OAuth2PasswordRequestForm, Depends()],db: db_dependency):
+def login_for_access_token(form_data:Annotated[OAuth2PasswordRequestForm, Depends()],db: db_dependency):
     user = authenticate_user(form_data.username, form_data.password, db)
 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail= "Name or Password is incorrect.")
 
     token = create_access_token(user.username, user.id, timedelta(minutes=20))
-    return {
+    return JSONResponse(
+        status_code = status.HTTP_200_OK,
+        content = {
         "access_token": token,
         "token_type": "bearer",
         "user": {
-            "uuid": user.id,
+            "uuid": str(user.id),
             "name": user.username,
             "email": user.email
-        }  
+        } 
     }
+    )
+    #TODO oauth2 vs jwtbearer
 
 def authenticate_user(email: str, password: str, db):
     user = db.query(models.User).filter(models.User.email == email).first()
@@ -122,7 +169,7 @@ def create_access_token(username: str, user_id: str, expires_delta: timedelta):
     encode.update({"exp": expires})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
+def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get('sub')
