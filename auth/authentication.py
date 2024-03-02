@@ -1,161 +1,193 @@
+"""
+Auth module includes fancy registration and login for users and organization creation.
+Home for token encryption and decryptions and user dependencies.
+"""
+
+import string
+import random
+import uuid
+
 from datetime import timedelta, datetime
 from typing import Annotated
+from sqlalchemy.orm import Session
+from passlib.context import CryptContext
+from dotenv import dotenv_values
+
+
+from jose import jwt, JWTError
+
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from starlette import status
-from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from jose import jwt, JWTError
-from auth.baseModels import RegisterOwner, RegisterEmployee, Token
-from database.db import ENGINE, SESSIONLOCAL
+
+from database.db import SESSIONLOCAL
 from database import models
-import string, random, uuid
+
+from auth.base_models import RegisterOwner, RegisterEmployee
+
+
 from utils.validation import validate_email, validate_password
 
 
-router = APIRouter(
-    tags={"Authentication"},
-    prefix="/auth"
-    )
+router = APIRouter(tags={"Authentication"}, prefix="/auth")
 
-SECRET_KEY = "1CD6923F4C8F1B56A775FDF2C0F95C51601F43DBD6376A11954786242F76FFFC28017BAA0457939D04F558AA6F0D09EE92076FD1CC6CBB39F8E4B8C2F2FE5500"
-ALGORITHM = "HS256"
+env = dotenv_values(".env")
 
-bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+SECRET_KEY = env["SECRET_KEY"]
+ALGORITHM = env["ALGORITHM"]
+
+bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 
 def get_db():
+    """
+    creates a db session
+    """
     try:
         db = SESSIONLOCAL()
         yield db
     finally:
         db.close()
 
-db_dependency = Annotated[Session, Depends(get_db)]
 
-#-TODO remove async- 
-#TODO json response instead of httpexception
+DbDependency = Annotated[Session, Depends(get_db)]
+
 
 @router.post("/employee/{linkref}")
-def create_user_employee(db:db_dependency, create_user_request: RegisterEmployee, linkref: str):
-    
+def create_user_employee(
+    db: DbDependency, create_user_request: RegisterEmployee, linkref: str
+):
+    """
+    Register a user in an already existing organization a.k.a employee.
+    """
     if not validate_email(create_user_request.email):
         return JSONResponse(
-            status_code = status.HTTP_400_BAD_REQUEST,
-            content = "invalid e-mail"
-            )
-    
+            status_code=status.HTTP_400_BAD_REQUEST, content="invalid e-mail"
+        )
+
     if not validate_password(create_user_request.password):
         return JSONResponse(
-            status_code = status.HTTP_400_BAD_REQUEST,
-            content = "invalid password"
-            )
+            status_code=status.HTTP_400_BAD_REQUEST, content="invalid password"
+        )
 
-    if db.query(models.User).filter(models.User.email == create_user_request.email).first():
+    if (
+        db.query(models.User)
+        .filter(models.User.email == create_user_request.email)
+        .first()
+    ):
         return JSONResponse(
-            status_code = status.HTTP_401_UNAUTHORIZED,
-            content = "e-mail already exists"
-            )
-        #raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"There is already an account created with this email"
-        pass
+            status_code=status.HTTP_401_UNAUTHORIZED, content="e-mail already exists"
+        )
 
     create_user_model = models.User(
-        id = uuid.uuid4(),
-        username = create_user_request.username,
-        email = create_user_request.email,
-        hashed_password = bcrypt_context.hash(create_user_request.password),
+        id=uuid.uuid4(),
+        username=create_user_request.username,
+        email=create_user_request.email,
+        hashed_password=bcrypt_context.hash(create_user_request.password),
     )
-    organization = db.query(models.Organization).filter_by(custom_link = linkref).first()
+    organization = db.query(models.Organization).filter_by(custom_link=linkref).first()
     organization.employees.append(create_user_model)
     db.add(create_user_model)
     db.add(organization)
     db.commit()
-    #TODO return JSONResponse()
 
 
 @router.post("/register/organization", status_code=status.HTTP_201_CREATED)
-def create_user(db: db_dependency, create_user_request: RegisterOwner):   
-
+def create_user(db: DbDependency, create_user_request: RegisterOwner):
+    """
+    Register a user and an organization. The user will be an Organization Admin of the
+    created organization.
+    """
     if not validate_email(create_user_request.email):
         return JSONResponse(
-            status_code = status.HTTP_400_BAD_REQUEST,
-            content = "invalid e-mail"
-            )
+            status_code=status.HTTP_400_BAD_REQUEST, content="invalid e-mail"
+        )
 
     if not validate_password(create_user_request.password):
         return JSONResponse(
-            status_code = status.HTTP_400_BAD_REQUEST,
-            content = "invalid password"
-            )
-    
-    if not db.query(models.User).filter(models.User.email == create_user_request.email).first():
-        db.add(create_user_model)
-    else:
+            status_code=status.HTTP_400_BAD_REQUEST, content="invalid password"
+        )
+
+    if (
+        db.query(models.User)
+        .filter(models.User.email == create_user_request.email)
+        .first()
+    ):
         return JSONResponse(
-            status_code = status.HTTP_401_UNAUTHORIZED,
-            content = "e-mail already exists"
-            )
+            status_code=status.HTTP_401_UNAUTHORIZED, content="e-mail already exists"
+        )
 
     user_id = uuid.uuid4()
 
     create_user_model = models.User(
-        id = user_id,
-        username = create_user_request.username,
-        email = create_user_request.email,
-        hashed_password = bcrypt_context.hash(create_user_request.password),
+        id=user_id,
+        username=create_user_request.username,
+        email=create_user_request.email,
+        hashed_password=bcrypt_context.hash(create_user_request.password),
     )
-    
+
     create_organization_model = models.Organization(
-        id = uuid.uuid4(),
-        custom_link = create_link_ref(10),
-        owner_id = user_id,
-        organization_name = create_user_request.organization_name,
-        hq_address = create_user_request.hq_address,
+        id=uuid.uuid4(),
+        custom_link=create_link_ref(10),
+        owner_id=user_id,
+        organization_name=create_user_request.organization_name,
+        hq_address=create_user_request.hq_address,
     )
     create_organization_model.employees.append(create_user_model)
+    db.add(create_user_model)
     db.add(create_organization_model)
     db.commit()
 
-    db.query(models.User).filter_by(id = create_user_model.id).first().organization_id = create_organization_model.id
+    db.query(models.User).filter_by(id=create_user_model.id).first().organization_id = (
+        create_organization_model.id
+    )
     db.commit()
 
-    return JSONResponse(
-        status_code = 201,
-        content = "Account created."
-    )
+    return JSONResponse(status_code=201, content="Account created.")
 
 
-
-def create_link_ref(length: int, chars = string.ascii_lowercase + string.ascii_uppercase + string.digits):
+def create_link_ref(
+    length: int, chars=string.ascii_lowercase + string.ascii_uppercase + string.digits
+):
+    """
+    Generate a refferal for an organization.
+    Returns N random characters and numbers.
+    """
     return "".join(random.choice(chars) for i in range(length))
 
 
 @router.post("/token")
-def login_for_access_token(form_data:Annotated[OAuth2PasswordRequestForm, Depends()],db: db_dependency):
+def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: DbDependency
+):
+    """
+    Login as an user. Returns a time-limited token that can be used to
+    get access to restricted endpoints.
+    """
     user = authenticate_user(form_data.username, form_data.password, db)
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail= "Name or Password is incorrect.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Name or Password is incorrect.",
+        )
 
     token = create_access_token(user.username, user.id, timedelta(minutes=20))
     return JSONResponse(
-        status_code = status.HTTP_200_OK,
-        content = {
-        "access_token": token,
-        "token_type": "bearer",
-        "user": {
-            "uuid": str(user.id),
-            "name": user.username,
-            "email": user.email
-        } 
-    }
+        status_code=status.HTTP_200_OK,
+        content={
+            "access_token": token,
+            "token_type": "bearer",
+            "user": {"uuid": str(user.id), "name": user.username, "email": user.email},
+        },
     )
-    #TODO oauth2 vs jwtbearer
+
 
 def authenticate_user(email: str, password: str, db):
+    """
+    Verifies user password.
+    """
     user = db.query(models.User).filter(models.User.email == email).first()
     if not user:
         return False
@@ -163,20 +195,33 @@ def authenticate_user(email: str, password: str, db):
         return False
     return user
 
+
 def create_access_token(username: str, user_id: str, expires_delta: timedelta):
+    """
+    Generates a token from the username and his uuid using JWT.
+    """
     encode = {"sub": username, "id": str(user_id)}
     expires = datetime.utcnow() + expires_delta
     encode.update({"exp": expires})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
 def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
+    """
+    Dependency for restricting non-logged-in users from accessing endpoints that
+    should not be visible to them.
+    """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get('sub')
+        username: str = payload.get("sub")
         user_id: int = payload.get("id")
         if username is None or user_id is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user.")
-        return {'username': username, 'id': user_id}
-    except JWTError:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail = "JWTERROR, WTF?")
+            return HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate user.",
+            )
+        return {"username": username, "id": user_id}
+    except JWTError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user."
+        ) from exc

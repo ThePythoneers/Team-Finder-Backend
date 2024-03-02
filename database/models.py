@@ -1,3 +1,10 @@
+"""
+Base of all the database. Here are all tables that this server uses.
+"""
+
+from uuid import uuid4
+from datetime import datetime
+
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy import (
     ForeignKey,
@@ -5,16 +12,14 @@ from sqlalchemy import (
     Column,
     UUID,
     String,
-    TIMESTAMP,
     INTEGER,
     DATE,
     UniqueConstraint,
 )
-from sqlalchemy import DateTime, func
-from uuid import uuid4
-from datetime import datetime
+from sqlalchemy import DateTime
 
 
+# pylint: disable=missing-class-docstring,too-few-public-methods
 class Base(DeclarativeBase):
     pass
 
@@ -64,6 +69,7 @@ user_projects = Table(
 # Mergem pe cea de jos ca asa am gasit pe net si vedem ce face
 
 
+# pylint: disable=invalid-name
 class Users_Custom_Roles(Base):
     __tablename__ = "users_custom_roles"
 
@@ -78,6 +84,7 @@ class Users_Custom_Roles(Base):
     relationship("Custom_Role", back_populates="memberships", lazy="dynamic")
 
 
+# pylint: disable=invalid-name
 class Department_projects(Base):
     __tablename__ = "department_projects"
 
@@ -115,11 +122,14 @@ class User(Base):
     projects = relationship("Projects", secondary=user_projects, back_populates="users")
 
 
+# pylint: disable=invalid-name
 class Primary_Roles(Base):
     __tablename__ = "primary_roles"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False)
     role_name = Column(String, nullable=False)  # admin d_manager p_manager
-    users = relationship("User", secondary=users_primary_roles, back_populates="primary_roles")
+    users = relationship(
+        "User", secondary=users_primary_roles, back_populates="primary_roles"
+    )
 
 
 class Organization(Base):
@@ -143,7 +153,9 @@ class Department(Base):
     department_name = Column(String, nullable=False)
     department_manager = Column(UUID(as_uuid=True))
     department_users = relationship("User", back_populates="department")
-    skills = relationship("Skill", secondary=departments_skills, back_populates="departments")
+    skills = relationship(
+        "Skill", secondary=departments_skills, back_populates="departments"
+    )
 
 
 skills_categories = Table(
@@ -154,6 +166,7 @@ skills_categories = Table(
 )
 
 
+# pylint: disable=invalid-name
 class Skill_Category(Base):
     __tablename__ = "skill_categories"
 
@@ -180,6 +193,7 @@ class Skill(Base):
     users = relationship("User", secondary=user_skills, back_populates="skills")
 
 
+# pylint: disable=invalid-name
 class Custom_Roles(Base):
     __tablename__ = "custom_roles"
 
