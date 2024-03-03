@@ -16,6 +16,7 @@ from database import models
 from custom_roles import croles
 from organization import organizations
 from roles import role
+from departments import department
 
 app = FastAPI()
 
@@ -34,6 +35,7 @@ app.include_router(profile.router)
 app.include_router(croles.router)
 app.include_router(organizations.router)
 app.include_router(role.router)
+app.include_router(department.router)
 
 
 @app.exception_handler(RequestValidationError)

@@ -115,7 +115,7 @@ def assign_role(db, user, user_id, _role_name, is_in_registration):
         )
 
     if not is_in_registration and not "Organization Admin" in [
-        i.role_name for i in victim_user.primary_roles
+        i.role_name for i in action_user.primary_roles
     ]:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,

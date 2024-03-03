@@ -152,10 +152,14 @@ class Department(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False)
     department_name = Column(String, nullable=False)
     department_manager = Column(UUID(as_uuid=True))
+    organization_id = Column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False
+    )
     department_users = relationship("User", back_populates="department")
     skills = relationship(
         "Skill", secondary=departments_skills, back_populates="departments"
     )
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
 
 
 skills_categories = Table(

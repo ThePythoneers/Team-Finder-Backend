@@ -35,6 +35,7 @@ env = dotenv_values(".env")
 
 SECRET_KEY = env["SECRET_KEY"]
 ALGORITHM = env["ALGORITHM"]
+TOKEN_EXPIRATION_MINUTES = int(env["TOKEN_EXPIRATION_MINUTES"])
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
@@ -180,7 +181,9 @@ def login_for_access_token(
             detail="Name or Password is incorrect.",
         )
 
-    token = create_access_token(user.username, user.id, timedelta(minutes=20))
+    token = create_access_token(
+        user.username, user.id, timedelta(minutes=TOKEN_EXPIRATION_MINUTES)
+    )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
