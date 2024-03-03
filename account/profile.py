@@ -47,7 +47,7 @@ def get_user_info(db: DbDependency, auth: UserDependency, user: str):
         )
 
     if (
-        db.query(User).filter_by(id=auth["user_id"]).first().organization_id
+        db.query(User).filter_by(id=auth["id"]).first().organization_id
         != user.organization_id
     ):
         return JSONResponse(
@@ -60,6 +60,7 @@ def get_user_info(db: DbDependency, auth: UserDependency, user: str):
         "email": user.email,
         "organization": user.organization.organization_name,
         "address": user.organization.hq_address,
+        "primary_roles": user.primary_roles,
     }
     return user_data
 

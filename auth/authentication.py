@@ -86,6 +86,11 @@ def create_user_employee(
         email=create_user_request.email,
         hashed_password=bcrypt_context.hash(create_user_request.password),
     )
+
+    create_user_model.primary_roles.append(
+        db.query(models.Primary_Roles).filter_by(role_name="Employee").first()
+    )
+
     organization = db.query(models.Organization).filter_by(custom_link=linkref).first()
     organization.employees.append(create_user_model)
     db.add(create_user_model)
@@ -126,7 +131,9 @@ def create_user(db: DbDependency, create_user_request: RegisterOwner):
         email=create_user_request.email,
         hashed_password=bcrypt_context.hash(create_user_request.password),
     )
-
+    create_user_model.primary_roles.append(
+        db.query(models.Primary_Roles).filter_by(role_name="Organization Admin").first()
+    )
     create_organization_model = models.Organization(
         id=uuid.uuid4(),
         custom_link=create_link_ref(10),

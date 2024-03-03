@@ -27,6 +27,11 @@ class RegisterEmployee(BaseModel):
     password: str
 
 
+class AuthenticationForm(BaseModel):
+    email: str
+    password: str
+
+
 class Token(BaseModel):
     """
     BaseModel for making token call.
