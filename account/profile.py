@@ -90,17 +90,3 @@ def set_user_custom_role(
     role.employees.append(db.query(User).filter_by(id=request.user_id).first())
 
     db.commit()
-
-
-@router.get("/get/unassigned/")
-def get_unassigned_departemnt_users(db: DbDependency, user: UserDependency):
-    action_user = db.query(User).filter_by(id=user["id"]).first()
-    employees_db = (
-        db.query(Organization)
-        .filter_by(id=action_user.organization_id)
-        .first()
-        .employees
-    )
-    unassigned_employees = [i for i in employees_db if i.department_id is None]
-
-    return unassigned_employees
