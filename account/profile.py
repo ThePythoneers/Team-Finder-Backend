@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from database.db import SESSIONLOCAL
 from database.models import User
-from database.models import Custom_Roles
+from database.models import Custom_Roles, Organization
 
 from auth import authentication
 from account.base_models import RoleRequestModel
@@ -35,7 +35,7 @@ DbDependency = Annotated[Session, Depends(get_db)]
 UserDependency = Annotated[dict, Depends(authentication.get_current_user)]
 
 
-@router.get("/{user}")
+@router.get("/get/{user}")
 def get_user_info(db: DbDependency, auth: UserDependency, user: str):
     """
     Gets all user related info from an uuid.
@@ -90,3 +90,17 @@ def set_user_custom_role(
     role.employees.append(db.query(User).filter_by(id=request.user_id).first())
 
     db.commit()
+
+
+@router.get("/get/unassigned/")
+def get_unassigned_departemnt_users(db: DbDependency, user: UserDependency):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    employees_db = (
+        db.query(Organization)
+        .filter_by(id=action_user.organization_id)
+        .first()
+        .employees
+    )
+    unassigned_employees = [i for i in employees_db if i.department_id is None]
+
+    return unassigned_employees
