@@ -17,3 +17,8 @@ class AssignManagerModel(BaseModel):
 
 class DeleteManagerModel(BaseModel):
     department_id: UUID
+
+
+class AddUserToDepartmentModel(BaseModel):
+    department_id: UUID
+    user_id: UUID

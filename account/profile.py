@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from database.db import SESSIONLOCAL
 from database.models import User
-from database.models import Custom_Roles
+from database.models import Custom_Roles, Organization
 
 from auth import authentication
 from account.base_models import RoleRequestModel
@@ -35,7 +35,7 @@ DbDependency = Annotated[Session, Depends(get_db)]
 UserDependency = Annotated[dict, Depends(authentication.get_current_user)]
 
 
-@router.get("/{user}")
+@router.get("/get/{user}")
 def get_user_info(db: DbDependency, auth: UserDependency, user: str):
     """
     Gets all user related info from an uuid.
