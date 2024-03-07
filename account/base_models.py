@@ -3,6 +3,7 @@ BaseModels for the profile.py endpoints
 """
 
 from pydantic import BaseModel
+from uuid import UUID
 
 
 class RoleRequestModel(BaseModel):
@@ -12,3 +13,10 @@ class RoleRequestModel(BaseModel):
 
     user_id: str
     role_id: str
+
+
+class SkillsRequestModel(BaseModel):
+    user_id: UUID
+    skill_id: UUID
+    level: int
+    experience: int

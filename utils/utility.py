@@ -2,7 +2,7 @@
 Tools that can be used on the entire server.
 """
 
-import re
+import re, string, random
 
 
 def validate_email(email: str) -> bool:
@@ -36,3 +36,13 @@ def validate_password(password: str) -> bool:
 
 if __name__ == "__main__":
     print(validate_password(input()))
+
+
+def create_link_ref(
+    length: int, chars=string.ascii_lowercase + string.ascii_uppercase + string.digits
+):
+    """
+    Generate a refferal for an organization.
+    Returns N random characters and numbers.
+    """
+    return "".join(random.choice(chars) for i in range(length))

@@ -37,7 +37,7 @@ DbDependency = Annotated[Session, Depends(get_db)]
 UserDependency = Annotated[dict, Depends(authentication.get_current_user)]
 
 
-@router.post("/create")
+@router.post("/")
 def create_department(
     db: DbDependency, user: UserDependency, _body: CreateDepartmentModel
 ):
@@ -70,10 +70,10 @@ def create_department(
     db.commit()
 
 
-@router.get("/get/{_id}")
+@router.get("/")
 def get_department_info(db: DbDependency, user: UserDependency, _id: str):
     action_user = db.query(User).filter_by(id=user["id"]).first()
-    department = db.query(Department).filter_by(_id=id).first()
+    department = db.query(Department).filter_by(id=_id).first()
 
     if not department:
         return JSONResponse(
@@ -101,7 +101,7 @@ def get_department_info(db: DbDependency, user: UserDependency, _id: str):
     )
 
 
-@router.put("/delete")
+@router.delete("/")
 def delete_department(
     db: DbDependency, user: UserDependency, _body: DeleteDepartmentModel
 ):
@@ -134,7 +134,7 @@ def delete_department(
     db.commit()
 
 
-@router.post("/manager/assign")
+@router.post("/manager/")
 def assign_department_manager(
     db: DbDependency, user: UserDependency, _body: AssignManagerModel
 ):
@@ -175,7 +175,7 @@ def assign_department_manager(
     db.commit()
 
 
-@router.put("/manager/delete")
+@router.delete("/manager/")
 def delete_department_manager(
     db: DbDependency, user: UserDependency, _body: DeleteManagerModel
 ):
@@ -203,7 +203,7 @@ def delete_department_manager(
     db.commit()
 
 
-@router.get("/get/unassigned/")
+@router.get("/unassigned/")
 def get_unassigned_departemnt_users(db: DbDependency, user: UserDependency):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     employees_db = (
@@ -217,7 +217,7 @@ def get_unassigned_departemnt_users(db: DbDependency, user: UserDependency):
     return unassigned_employees
 
 
-@router.get("/get/users/{_id}")
+@router.get("/users/{_id}")
 def get_users_from_department(db: DbDependency, user: UserDependency, _id: UUID):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     employees_db = (
@@ -235,7 +235,7 @@ def get_users_from_department(db: DbDependency, user: UserDependency, _id: UUID)
     return assigned_employees
 
 
-@router.post("/add/user")
+@router.post("/user")
 def add_user_to_department(
     db: DbDependency, user: UserDependency, _body: AddUserToDepartmentModel
 ):
@@ -272,7 +272,7 @@ def add_user_to_department(
     db.commit()
 
 
-@router.put("/delete/user")
+@router.delete("/user")
 def remove_user_to_department(
     db: DbDependency, user: UserDependency, _body: AddUserToDepartmentModel
 ):
@@ -307,3 +307,14 @@ def remove_user_to_department(
 
     department.department_users.remove(victim_user)
     db.commit()
+
+
+@router.get("s")
+def get_departments(db: DbDependency, user: UserDependency):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    departments = (
+        db.query(Department)
+        .filter_by(organization_id=action_user.organization_id)
+        .all()
+    )
+    return departments

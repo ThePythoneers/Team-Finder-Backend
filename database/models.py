@@ -7,6 +7,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy import (
+    ARRAY,
     ForeignKey,
     Table,
     Column,
@@ -53,7 +54,7 @@ user_skills = Table(
         "skill_level", INTEGER
     ),  # 1 - Learns 2 - Knows 3 - Does 4 - Helps 5 - Teaches
     Column(
-        "skill_experience", String
+        "skill_experience", INTEGER
     ),  # 0-6 months 6-12 months 1-2 years 2-4 years 4-7 years > 7 years
 )
 
@@ -67,6 +68,16 @@ user_projects = Table(
 
 # la custom roles nu sunt sigur cum functioneaza
 # Mergem pe cea de jos ca asa am gasit pe net si vedem ce face
+
+
+class User_Skills(Base):
+    __tablename__ = "users_skills"
+    id = Column(UUID, default=uuid4, primary_key=True)
+    user_id = Column(UUID, ForeignKey("users.id"))
+    skill_id = Column(UUID, ForeignKey("skills.id"))
+    skill_level = Column(INTEGER)
+    skill_experience = Column(INTEGER)
+    user = relationship("User", back_populates="skill_level")
 
 
 # pylint: disable=invalid-name
@@ -117,7 +128,7 @@ class User(Base):
     primary_roles = relationship(
         "Primary_Roles", secondary=users_primary_roles, back_populates="users"
     )
-    skills = relationship("Skill", secondary=user_skills, back_populates="users")
+    skill_level = relationship("User_Skills", back_populates="user")
     # department
     projects = relationship("Projects", secondary=user_projects, back_populates="users")
 
@@ -162,12 +173,12 @@ class Department(Base):
     created_at = Column(DateTime, default=datetime.now, nullable=False)
 
 
-skills_categories = Table(
-    "skills_categories",
-    Base.metadata,
-    Column("skill_id", ForeignKey("skills.id")),
-    Column("skill_category_id", ForeignKey("skill_categories.id")),
-)
+# skills_categories = Table(
+#     "skills_categories",
+#     Base.metadata,
+#     Column("skill_id", ForeignKey("skills.id")),
+#     Column("skill_category_id", ForeignKey("skill_categories.id")),
+# )
 
 
 # pylint: disable=invalid-name
@@ -175,26 +186,23 @@ class Skill_Category(Base):
     __tablename__ = "skill_categories"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False)
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"))
     category_name = Column(String, nullable=False)
-    skills = relationship(
-        "Skill", secondary=skills_categories, back_populates="skill_category"
-    )
 
 
 class Skill(Base):
     __tablename__ = "skills"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False)
-    skill_category = relationship(
-        "Skill_Category", secondary=skills_categories, back_populates="skills"
-    )
+    skill_category = Column(ARRAY(UUID))
     skill_name = Column(String, nullable=False)
     skill_description = Column(String, nullable=False)
+    organization_id = Column(UUID, ForeignKey("organizations.id"))
     author = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     departments = relationship(
         "Department", secondary=departments_skills, back_populates="skills"
     )
-    users = relationship("User", secondary=user_skills, back_populates="skills")
+    user_level = relationship("User_Skills")
 
 
 # pylint: disable=invalid-name
