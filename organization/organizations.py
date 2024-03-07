@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from auth import authentication
 from database.models import User, Organization
 from database.db import SESSIONLOCAL
+from utils.utility import create_link_ref
 
 router = APIRouter(prefix="/organization", tags={"Organization"})
 
@@ -33,7 +34,7 @@ DbDependency = Annotated[Session, Depends(get_db)]
 UserDependecy = Annotated[dict, Depends(authentication.get_current_user)]
 
 
-@router.get("/get/link/{ref}")
+@router.get("/link/{ref}")
 def get_organization_info_from_ref(db: DbDependency, ref: str):
     """
     Gets information for the registration page from the refferal.
@@ -55,7 +56,7 @@ def get_organization_info_from_ref(db: DbDependency, ref: str):
     )
 
 
-@router.get("/get/{org}")
+@router.get("/")
 def get_organization_info(db: DbDependency, user: UserDependecy, org: str):
     """
     Gets information for the organization page from the id.
@@ -92,3 +93,31 @@ def get_organization_info(db: DbDependency, user: UserDependecy, org: str):
             "created_at": str(db_org.created_at),
         },
     )
+
+
+@router.put("/ref/refresh")
+def refresh_ref_link(db: DbDependency, user: UserDependecy):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    db_org = db.query(Organization).filter_by(id=action_user.organization_id).first()
+    db_org.custom_link = create_link_ref(10)
+    db.commit()
+    return db_org.custom_link
+
+
+@router.get("/employees")
+def get_employees_from_organization(db: DbDependency, user: UserDependecy):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    db_org = db.query(Organization).filter_by(id=action_user.organization_id).first()
+    l = []
+
+    for j in db_org.employees:
+        l.append(
+            {
+                "user": j.username,
+                "email": j.email,
+                "id": str(j.id),
+                "primary_roles": [i.role_name for i in j.primary_roles],
+            }
+        )
+
+    return JSONResponse(status_code=200, content=l)

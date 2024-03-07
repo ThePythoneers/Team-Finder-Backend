@@ -26,7 +26,7 @@ from database import models
 from auth.base_models import RegisterOwner, RegisterEmployee
 
 
-from utils.validation import validate_email, validate_password
+from utils.utility import validate_email, validate_password, create_link_ref
 
 
 router = APIRouter(tags={"Authentication"}, prefix="/auth")
@@ -155,16 +155,6 @@ def create_user(db: DbDependency, create_user_request: RegisterOwner):
     return JSONResponse(status_code=201, content="Account created.")
 
 
-def create_link_ref(
-    length: int, chars=string.ascii_lowercase + string.ascii_uppercase + string.digits
-):
-    """
-    Generate a refferal for an organization.
-    Returns N random characters and numbers.
-    """
-    return "".join(random.choice(chars) for i in range(length))
-
-
 @router.post("/token")
 def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: DbDependency
@@ -189,7 +179,35 @@ def login_for_access_token(
         content={
             "access_token": token,
             "token_type": "bearer",
-            "user": {"uuid": str(user.id), "name": user.username, "email": user.email},
+            "user": {
+                "uuid": str(user.id),
+                "name": user.username,
+                "email": user.email,
+                "organization": str(user.organization_id),
+                "organization_name": user.organization.organization_name,
+                "roles": [i.role_name for i in user.primary_roles],
+            },
+        },
+    )
+
+
+@router.get("/token-info/{_token}")
+def get_info_from_token(db: DbDependency, _token: str):
+    _id = get_current_user(_token)["id"]
+    user = db.query(models.User).filter_by(id=_id).first()
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "access_token": _token,
+            "token_type": "bearer",
+            "user": {
+                "uuid": str(user.id),
+                "name": user.username,
+                "email": user.email,
+                "organization": str(user.organization_id),
+                "organization_name": user.organization.organization_name,
+                "roles": [i.role_name for i in user.primary_roles],
+            },
         },
     )
 

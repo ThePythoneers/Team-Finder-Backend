@@ -11,10 +11,10 @@ from sqlalchemy.orm import Session
 
 from database.db import SESSIONLOCAL
 from database.models import User
-from database.models import Custom_Roles, Organization
+from database.models import Custom_Roles, Organization, User_Skills
 
 from auth import authentication
-from account.base_models import RoleRequestModel
+from account.base_models import RoleRequestModel, SkillsRequestModel
 
 
 router = APIRouter(tags={"User profile"}, prefix="/user")
@@ -90,3 +90,38 @@ def set_user_custom_role(
     role.employees.append(db.query(User).filter_by(id=request.user_id).first())
 
     db.commit()
+
+
+@router.post("/skills")
+def assign_skill_to_user(
+    db: DbDependency, auth: UserDependency, _body: SkillsRequestModel
+):
+    user = db.query(User).filter(User.id == auth["id"]).first()
+    # 1 – Learns, 2 – Knows, 3 – Does, 4 – Helps, 5 – Teaches
+    if not 1 < _body.level < 6:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST, content="Invalid skill level."
+        )
+    # 1 - 0-6 months, 2 - 6-12 months, 3 - 1-2 years
+    # 4 - 2-4 years, 5 - 4-7 years, 6 - >7 years
+    if not 1 < _body.experience < 7:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST, content="Invalid skill experience."
+        )
+
+    create_user_skills_model = User_Skills(
+        user_id=user.id,
+        skill_id=_body.skill_id,
+        skill_level=_body.level,
+        skill_experience=_body.experience,
+    )
+
+    db.add(create_user_skills_model)
+    db.commit()
+
+
+@router.get("/skills")
+def get_skills_from_user(db: DbDependency, auth: UserDependency):
+    user = db.query(User).filter(User.id == auth["id"]).first()
+
+    return user.skill_level

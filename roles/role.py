@@ -70,7 +70,7 @@ def remove_role_from_user(
             content="You are not allowed to modify the role of an user from another organization.",
         )
 
-    if not "Organization Admin" in [i.role_name for i in victim_user.primary_roles]:
+    if not "Organization Admin" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content="Only an Organization Admin can modify the role of an user.",
