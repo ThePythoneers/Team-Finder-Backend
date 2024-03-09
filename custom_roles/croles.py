@@ -62,6 +62,16 @@ def assign_role_to_user(
     db.commit()
 
 
+@router.delete("/user")
+def delete_role_from_user(
+    user: UserDependency, db: DbDependency, _body: AssignCustomRoleModel
+):
+    db.query(Users_Custom_Roles).filter_by(
+        project_id=_body.project_id, custom_role_id=_body.role_id, user_id=_body.user_id
+    ).delete()
+    db.commit()
+
+
 @router.get("/user")
 def get_all_role_from_user(user: UserDependency, db: DbDependency, _id: UUID):
     roles = db.query(Users_Custom_Roles).filter_by(user_id=_id).all()
