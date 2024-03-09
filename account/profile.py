@@ -5,17 +5,17 @@ assigning roles, assigning a department, etc.
 
 from typing import Annotated
 
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from database.db import SESSIONLOCAL
 from database.models import User
-from database.models import Custom_Roles, Organization, User_Skills
+from database.models import Custom_Roles, User_Skills
 
 from auth import authentication
-from account.base_models import RoleRequestModel, SkillsRequestModel
-
+from account.base_models import RoleRequestModel, SkillsRequestModel, DeleteSkillModel
 
 router = APIRouter(tags={"User profile"}, prefix="/user")
 
@@ -65,38 +65,14 @@ def get_user_info(db: DbDependency, auth: UserDependency, user: str):
     return user_data
 
 
-@router.post("/customroles/add", status_code=status.HTTP_202_ACCEPTED)
-def set_user_custom_role(
-    db: DbDependency, auth: UserDependency, request: RoleRequestModel
-):
-    """
-    Sets a custom role on the user.
-    """
-    role = db.query(Custom_Roles).filter_by(id=request.role_id).first()
-
-    if (
-        db.query(User).filter_by(id=auth["user_id"]).first().organization_id
-        != db.query(User).filter_by(id=request.user_id).first().organization_id
-    ):
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content="You are not allowed to view users from another organization other than yours.",
-        )
-    if not role:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST, content="This role does not exist."
-        )
-
-    role.employees.append(db.query(User).filter_by(id=request.user_id).first())
-
-    db.commit()
-
-
 @router.post("/skills")
 def assign_skill_to_user(
     db: DbDependency, auth: UserDependency, _body: SkillsRequestModel
 ):
-    user = db.query(User).filter(User.id == auth["id"]).first()
+    """
+    Users can assign themselves skills including their level and experience.
+    """
+    user = db.query(User).filter(id=auth["id"]).first()
     # 1 – Learns, 2 – Knows, 3 – Does, 4 – Helps, 5 – Teaches
     if not 1 < _body.level < 6:
         return JSONResponse(
@@ -122,6 +98,28 @@ def assign_skill_to_user(
 
 @router.get("/skills")
 def get_skills_from_user(db: DbDependency, auth: UserDependency):
-    user = db.query(User).filter(User.id == auth["id"]).first()
+    """
+    Get all skills assigned to an user.
+    """
+    user = db.query(User).filter_by(id=auth["id"]).first()
 
     return user.skill_level
+
+
+@router.delete("/skills")
+def delete_skill_from_user(
+    db: DbDependency, auth: UserDependency, _body: DeleteSkillModel
+):
+    """
+    Delete a skill from an id.
+    """
+    user = db.query(User).filter_by(id=auth["id"]).first()
+    if not "Department Manager" in [i.role_name for i in user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You need the Department Manager role to delete a skill.",
+        )
+    db.query(User_Skills).filter_by(
+        user_id=_body.user_id, skill_id=_body.skill_id
+    ).delete()
+    db.commit()

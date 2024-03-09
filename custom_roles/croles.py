@@ -4,14 +4,15 @@ creating, editing, deleting roles.
 """
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from database.db import SESSIONLOCAL
-from database.models import Custom_Roles, User
-from custom_roles.base_models import CustomRole, GetCRolesRequest
+from database.models import Custom_Roles, User, Projects, Users_Custom_Roles
+from custom_roles.base_models import AssignCustomRoleModel, CreateCustomRoleModel
 from auth import authentication
 
 router = APIRouter(tags={"Custom Roles"}, prefix="/roles/custom")
@@ -32,46 +33,47 @@ DbDependency = Annotated[Session, Depends(get_db)]
 UserDependency = Annotated[dict, Depends(authentication.get_current_user)]
 
 
-@router.post("/create", status_code=status.HTTP_201_CREATED)
-def create_role(
-    user: UserDependency, db: DbDependency, create_role_request: CustomRole
+@router.post("/", status_code=status.HTTP_201_CREATED)
+def create_role_in_project(
+    user: UserDependency, db: DbDependency, _body: CreateCustomRoleModel
 ):
     """
     Create a custom role.
     """
-    user = db.query(User).filter_by(id=user["id"]).first()
-
-    if str(user.organization_id) != create_role_request.organization_id:
-        print(db.query(User).filter_by(id=user["id"]).first().organization_id)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="You don't have access to this organization",
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    project = db.query(Projects).filter_by(id=_body.project_id).first()
+    project.project_roles.append(
+        Custom_Roles(
+            custom_role_name=_body.role_name,
+            organization_id=action_user.organization_id,
         )
-
-    role_model = Custom_Roles(
-        organization_id=create_role_request.organization_id,
-        custom_role_name=create_role_request.role_name,
     )
-    db.add(role_model)
     db.commit()
 
 
-@router.post("/get")
-# pylint: disable=unused-argument
-def get_roles(user: UserDependency, db: DbDependency, request: GetCRolesRequest):
-    """
-    Get all roles from an organization.
-    """
-    roles = (
-        db.query(Custom_Roles).filter_by(organization_id=request.organization_id).all()
+@router.post("/user")
+def assign_role_to_user(
+    user: UserDependency, db: DbDependency, _body: AssignCustomRoleModel
+):
+    create_user_custom_role_model = Users_Custom_Roles(
+        user_id=_body.user_id, project_id=_body.project_id, custom_role_id=_body.role_id
     )
+    db.add(create_user_custom_role_model)
+    db.commit()
 
-    roles_dict = {}
-    for j, i in enumerate(roles):
-        roles_dict[j] = {
-            "custom_role_name": i.custom_role_name,
-            "id": str(i.id),
-            "organization_id": str(i.organization_id),
-        }
 
-    return JSONResponse(content=roles_dict, status_code=200)
+@router.get("/user")
+def get_all_role_from_user(user: UserDependency, db: DbDependency, _id: UUID):
+    roles = db.query(Users_Custom_Roles).filter_by(user_id=_id).all()
+    return_list = list()
+    for i in roles:
+        return_list.append(
+            {
+                "role_name": db.query(Custom_Roles)
+                .filter_by(id=i.custom_role_id)
+                .first()
+                .custom_role_name,
+                "role_id": str(i.custom_role_id),
+            }
+        )
+    return JSONResponse(status_code=status.HTTP_200_OK, content=return_list)
