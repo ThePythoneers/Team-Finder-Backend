@@ -76,6 +76,11 @@ def remove_role_from_user(
             content="Only an Organization Admin can modify the role of an user.",
         )
 
+    if victim_user.id == action_user.id and _body.role_name == "Organization Admin":
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You cannot remove your own role.",
+        )
     victim_user.primary_roles.remove(role_to_delete)
     db.commit()
 

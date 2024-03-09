@@ -16,9 +16,6 @@ from auth import authentication
 from database.models import Organization, User, Department
 from database.db import SESSIONLOCAL
 
-# TODO Unintended behaviour between different departments and organizations.
-
-
 router = APIRouter(prefix="/department", tags={"Department"})
 
 
@@ -162,7 +159,8 @@ def assign_department_manager(
     if department.department_manager:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content="This department already has a manager assigned. Consider deleting him first the adding another person.",
+            content="This department already has a manager assigned. \
+                  Consider deleting him first the adding another person.",
         )
 
     if victim_user.organization_id != department.organization_id:
@@ -230,7 +228,8 @@ def get_users_from_department(db: DbDependency, user: UserDependency, _id: UUID)
     if not assigned_employees:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content="This department doesn't have any employees assigned yet. Remove him before assigning him to another department.",
+            content="This department doesn't have any employees assigned yet.\
+                  Remove him before assigning him to another department.",
         )
     return assigned_employees
 

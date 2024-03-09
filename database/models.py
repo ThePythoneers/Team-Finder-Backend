@@ -70,6 +70,7 @@ user_projects = Table(
 # Mergem pe cea de jos ca asa am gasit pe net si vedem ce face
 
 
+# pylint: disable=invalid-name
 class User_Skills(Base):
     __tablename__ = "users_skills"
     id = Column(UUID, default=uuid4, primary_key=True)

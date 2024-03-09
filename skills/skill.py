@@ -1,10 +1,11 @@
-from fastapi import APIRouter, status, Depends
+from uuid import UUID
 from typing import Annotated
-from database.db import SESSIONLOCAL
+from fastapi import APIRouter, status, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from database.models import Skill, Skill_Category, User
+from database.models import Skill, Skill_Category, User, User_Skills
+from database.db import SESSIONLOCAL
 from auth import authentication
 from skills.base_models import CreateSkillModel
 
@@ -34,7 +35,7 @@ def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel
     if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content="Only a department manager can modify roles.",
+            content="Only a department manager can modify skills.",
         )
 
     create_skill_model = Skill(
@@ -48,8 +49,22 @@ def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel
     db.commit()
 
 
-# @router.delete("/")
-# def delete_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel))
+@router.delete("/")
+def delete_skill(db: DbDependency, user: UserDependency, _id: UUID):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+
+    if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="Only a department manager can modify skills.",
+        )
+    if db.query(User_Skills).filter_by(skill_id=_id).first():
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You have to remove the role from all employees before deleting it.",
+        )
+    db.query(Skill).filter_by(id=_id).delete()
+    db.commit()
 
 
 @router.post("/category/{name}")
@@ -59,7 +74,7 @@ def create_skill_category(db: DbDependency, user: UserDependency, name: str):
     if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content="Only a department manager can modify roles.",
+            content="Only a department manager can modify skills.",
         )
 
     create_skill_category_model = Skill_Category(
