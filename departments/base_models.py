@@ -20,5 +20,4 @@ class DeleteManagerModel(BaseModel):
 
 
 class AddUserToDepartmentModel(BaseModel):
-    department_id: UUID
     user_id: UUID

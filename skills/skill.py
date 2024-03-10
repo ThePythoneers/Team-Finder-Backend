@@ -70,6 +70,13 @@ def delete_skill(db: DbDependency, user: UserDependency, _id: UUID):
 @router.post("/category/{name}")
 def create_skill_category(db: DbDependency, user: UserDependency, name: str):
     action_user = db.query(User).filter_by(id=user["id"]).first()
+    name_check = db.query(Skill_Category).filter_by(category_name=name).first()
+
+    if name_check:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="This Skill Category already exists.",
+        )
 
     if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
@@ -85,7 +92,29 @@ def create_skill_category(db: DbDependency, user: UserDependency, name: str):
     db.commit()
 
 
-@router.get("/category/")
+@router.delete("/category/{name}")
+def delete_skill_category(db: DbDependency, user: UserDependency, name: str):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    name_check = db.query(Skill_Category).filter_by(category_name=name)
+
+    if not name_check.first():
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="This Skill Category doesn't exist.",
+        )
+
+    if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="Only a department manager can modify skills.",
+        )
+
+    name_check.delete()
+
+    db.commit()
+
+
+@router.get("/categories/")
 def get_skill_categories(db: DbDependency, user: UserDependency):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     categories = (
@@ -93,6 +122,12 @@ def get_skill_categories(db: DbDependency, user: UserDependency):
         .filter_by(organization_id=action_user.organization_id)
         .all()
     )
+    return categories
+
+
+@router.get("/category/{_id}")
+def get_skill_category(db: DbDependency, user: UserDependency, _id: str):
+    categories = db.query(Skill_Category).filter_by(id=_id).first()
     return categories
 
 

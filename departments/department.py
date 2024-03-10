@@ -211,6 +211,11 @@ def get_unassigned_departemnt_users(db: DbDependency, user: UserDependency):
         .employees
     )
     unassigned_employees = [i for i in employees_db if i.department_id is None]
+    dict_employees = [i.__dict__ for i in employees_db if i.department_id is None]
+
+    for i, j in zip(dict_employees, unassigned_employees):
+        i.pop("hashed_password")
+        i["primary_roles"] = j.primary_roles
 
     return unassigned_employees
 
@@ -224,13 +229,20 @@ def get_users_from_department(db: DbDependency, user: UserDependency, _id: UUID)
         .first()
         .employees
     )
+
     assigned_employees = [i for i in employees_db if i.department_id == _id]
+    dict_employees = [i.__dict__ for i in employees_db if i.department_id == _id]
+
     if not assigned_employees:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content="This department doesn't have any employees assigned yet.\
-                  Remove him before assigning him to another department.",
+            content="This department doesn't have any employees assigned yet.",
         )
+
+    for i, j in zip(dict_employees, assigned_employees):
+        i.pop("hashed_password")
+        i["primary_roles"] = j.primary_roles
+
     return assigned_employees
 
 
@@ -240,7 +252,15 @@ def add_user_to_department(
 ):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     victim_user = db.query(User).filter_by(id=_body.user_id).first()
+    department = (
+        db.query(Department).filter_by(department_manager=victim_user.id).first()
+    )
 
+    if "Department Manager" not in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You are not a Department Manager",
+        )
     if not victim_user:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -256,10 +276,15 @@ def add_user_to_department(
     if not victim_user.department_id is None:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content="This user has been already assigned to a department.",
+            content="This user is already in a department.",
         )
 
-    department = db.query(Department).filter_by(id=_body.department_id).first()
+    if department:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="This user is a Department Manager and cannot be added to the department.",
+        )
+    department = db.query(Department).filter_by(id=action_user.department_id).first()
 
     if not department:
         return JSONResponse(
@@ -296,7 +321,7 @@ def remove_user_to_department(
             content="You cannot delete an user from another organization.",
         )
 
-    department = db.query(Department).filter_by(id=_body.department_id).first()
+    department = db.query(Department).filter_by(id=action_user.department_id).first()
 
     if not department:
         return JSONResponse(
@@ -316,4 +341,18 @@ def get_departments(db: DbDependency, user: UserDependency):
         .filter_by(organization_id=action_user.organization_id)
         .all()
     )
-    return departments
+
+    return_departments = []
+    for i in departments:
+        manager_email = db.query(User).filter_by(id=i.department_manager).first()
+        manager_email = manager_email.email if manager_email else None
+        return_departments.append(
+            {
+                "id": str(i.id),
+                "department_name": i.department_name,
+                "department_manager": i.department_manager,
+                "manager_email": manager_email,
+                "department_users": [str(i.id) for i in i.department_users],
+            }
+        )
+    return JSONResponse(status_code=status.HTTP_200_OK, content=return_departments)

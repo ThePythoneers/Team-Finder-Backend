@@ -6,16 +6,16 @@ assigning roles, assigning a department, etc.
 from typing import Annotated
 
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from database.db import SESSIONLOCAL
 from database.models import User
-from database.models import Custom_Roles, User_Skills
+from database.models import User_Skills
 
 from auth import authentication
-from account.base_models import RoleRequestModel, SkillsRequestModel, DeleteSkillModel
+from account.base_models import SkillsRequestModel, DeleteSkillModel
 
 router = APIRouter(tags={"User profile"}, prefix="/user")
 
@@ -27,6 +27,7 @@ def get_db():
     try:
         db = SESSIONLOCAL()
         yield db
+        print("test")
     finally:
         db.close()
 
@@ -40,10 +41,18 @@ def get_user_info(db: DbDependency, auth: UserDependency, user: str):
     """
     Gets all user related info from an uuid.
     """
+    # permission = ServerPermissions(db, auth)
+    # if not permission.is_field_uuid(user):
+    #     return JSONResponse(
+    #         status_code=status.HTTP_400_NOT_FOUND,
+    #         content="The uuid introduced is not valid.",
+    #     )
+
     user = db.query(User).filter(User.id == user).first()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="This account does not exist."
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="This account does not exist.",
         )
 
     if (
@@ -61,6 +70,7 @@ def get_user_info(db: DbDependency, auth: UserDependency, user: str):
         "organization": user.organization.organization_name,
         "address": user.organization.hq_address,
         "primary_roles": user.primary_roles,
+        "department": user.department,
     }
     return user_data
 

@@ -91,6 +91,7 @@ def get_organization_info(db: DbDependency, user: UserDependecy, org: str):
             "owner_id": str(db_org.owner_id),
             "employees": [str(i.id) for i in db_org.employees],
             "created_at": str(db_org.created_at),
+            "link_ref": db_org.custom_link,
         },
     )
 
