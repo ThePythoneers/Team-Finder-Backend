@@ -13,7 +13,7 @@ class CreateProjectModel(BaseModel):
     project_status: str
     general_description: str
     technology_stack: list
-    team_roles: list
+    work_hours: int
 
 
 class UpdateProjectModel(BaseModel):
@@ -26,6 +26,7 @@ class UpdateProjectModel(BaseModel):
     general_description: Optional[str] = None
     technology_stack: Optional[str] = None
     team_roles: Optional[str] = None
+    work_hours: Optional[int] = None
 
 
 class GetAvailableEmployeesModel(BaseModel):

@@ -132,6 +132,7 @@ class User(Base):
     skill_level = relationship("User_Skills", back_populates="user")
     # department
     projects = relationship("Projects", secondary=user_projects, back_populates="users")
+    work_hours = Column(INTEGER)
 
 
 # pylint: disable=invalid-name
@@ -235,3 +236,24 @@ class Projects(Base):
         "Custom_Roles", secondary=project_custom_roles, back_populates="projects"
     )
     users = relationship("User", secondary=user_projects, back_populates="projects")
+    work_hours = Column(INTEGER, nullable=False)
+
+
+class AllocationProposal(Base):
+    __tablename__ = "allocation_proposals"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False)
+    project_id_allocation = Column(
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
+    )
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    comments = Column(String)
+
+
+class DeallocationProposal(Base):
+    __tablename__ = "deallocation_proposals"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False)
+    project_id_deallocation = Column(
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
+    )
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    reason = Column(String)

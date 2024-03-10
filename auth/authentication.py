@@ -129,6 +129,7 @@ def create_user(db: DbDependency, create_user_request: RegisterOwner):
         username=create_user_request.username,
         email=create_user_request.email,
         hashed_password=bcrypt_context.hash(create_user_request.password),
+        work_hours=0,
     )
     create_user_model.primary_roles.append(
         db.query(models.Primary_Roles).filter_by(role_name="Organization Admin").first()
@@ -200,10 +201,9 @@ def get_info_from_token(db: DbDependency, _token: str):
             "access_token": _token,
             "token_type": "bearer",
             "user": {
-                "uuid": str(user.id),
-                "name": user.username,
+                "id": str(user.id),
+                "username": user.username,
                 "email": user.email,
-                "organization": str(user.organization_id),
                 "organization_name": user.organization.organization_name,
                 "roles": [i.role_name for i in user.primary_roles],
             },

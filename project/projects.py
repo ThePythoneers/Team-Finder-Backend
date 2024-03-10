@@ -65,6 +65,7 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
         start_date=_body.start_date,
         deadline_date=_body.deadline_date,
         technology_stack=_body.technology_stack,
+        work_hours=_body.work_hours,
     )
     print("test")
     # TODO create_project_model.project_roles.append(_body.team_roles)
@@ -108,9 +109,13 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
         update_dict["general_description"] = _body.general_description
     if _body.technology_stack:
         update_dict["technology_stack"] = _body.technology_stack
-    # TODO if _body.team_roles:
-    # TODO    update_dict["team_roles"] = _body.team_roles
+    if _body.work_hours:
+        update_dict["work_hours"] = _body.work_hours
+    if _body.team_roles:
+        update_dict["team_roles"] = _body.team_roles
 
+    for i in project_id.first().users:
+        i.work_hours += _body.work_hours - project_id.first().work_hours
     print(_body)
     project_id.update(update_dict)
 
@@ -141,8 +146,9 @@ def assign_user_to_project(
     db: DbDependency, user: UserDependency, _body: AssignUserModel
 ):
     project = db.query(Projects).filter_by(id=_body.project_id).first()
-    victim_user = action_user = db.query(User).filter_by(id=_body.user_id).first()
+    victim_user = db.query(User).filter_by(id=_body.user_id).first()
     project.users.append(victim_user)
+    victim_user.work_hours += project.work_hours
     db.commit()
 
 
@@ -165,8 +171,11 @@ def get_available_employees(
     available_employees = []
 
     for i in organization.employees:
-        if _body.partially_available:
-            pass
+        i.__dict__["method"] = []
+        if _body.partially_available and i.work_hours < 8:
+            i.__dict__["method"].append("partially_available")
+            available_employees.append(i.__dict__)
+            print("test")
         if _body.close_to_finish:
             for j in i.projects:
                 d1 = j.deadline_date
@@ -180,11 +189,13 @@ def get_available_employees(
                 print(weeks_difference)
 
                 if weeks_difference < _body.deadline:
-                    available_employees.append(i)
 
-        if _body.unavailable:
-            pass
+                    i.__dict__["method"].append("close_to_finish")
+                    available_employees.append(i.__dict__)
+
+        if _body.unavailable and i.work_hours >= 8:
+            i.__dict__["method"].append("unavailable")
+            available_employees.append(i.__dict__)
         if not i.projects:
             available_employees.append(i)
-
     return available_employees
