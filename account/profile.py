@@ -71,6 +71,7 @@ def get_user_info(db: DbDependency, auth: UserDependency, user: str):
         "address": user.organization.hq_address,
         "primary_roles": user.primary_roles,
         "department": user.department,
+        "work_hours": user.work_hours,
     }
     return user_data
 

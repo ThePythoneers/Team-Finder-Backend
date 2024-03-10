@@ -127,7 +127,7 @@ def assign_role(db, user, user_id, _role_name, is_in_registration):
             content="Only an Organization Admin can modify the role of an user.",
         )
 
-    if role_to_add in action_user.primary_roles:
+    if role_to_add in victim_user.primary_roles:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content="Cannot assign an already assigned role to this user.",

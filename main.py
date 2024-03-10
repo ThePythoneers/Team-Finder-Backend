@@ -19,6 +19,7 @@ from roles import role
 from departments import department
 from skills import skill
 from project import projects
+from proposals import proposal
 
 app = FastAPI()
 
@@ -40,6 +41,7 @@ app.include_router(role.router)
 app.include_router(department.router)
 app.include_router(skill.router)
 app.include_router(projects.router)
+app.include_router(proposal.router)
 
 
 @app.exception_handler(RequestValidationError)
