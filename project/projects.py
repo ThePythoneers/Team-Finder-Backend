@@ -1,15 +1,21 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 
 from auth import authentication
-from database.models import User, Projects
+from database.models import Organization, User, Projects
 from database.db import SESSIONLOCAL
-from project.base_models import CreateProjectModel, UpdateProjectModel
+from project.base_models import (
+    AssignUserModel,
+    CreateProjectModel,
+    GetAvailableEmployeesModel,
+    UpdateProjectModel,
+)
+from datetime import date, timedelta
 
 router = APIRouter(prefix="/project", tags={"Projects"})
 
@@ -79,10 +85,6 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
         return JSONResponse(
             status_code=400, content="Only a Project Manager can update a new project."
         )
-
-    if not _body.project_period == "Fixed" and _body.deadline_date is not None:
-        return JSONResponse(status_code=400, content="Bad project period.")
-
     if _body.project_status and _body.project_status not in ["Not Started", "Starting"]:
         return JSONResponse(
             status_code=400,
@@ -132,3 +134,57 @@ def delete_project(db: DbDependency, user: UserDependency, _id: UUID):
 
     project.delete()
     db.commit()
+
+
+@router.post("/assign")
+def assign_user_to_project(
+    db: DbDependency, user: UserDependency, _body: AssignUserModel
+):
+    project = db.query(Projects).filter_by(id=_body.project_id).first()
+    victim_user = action_user = db.query(User).filter_by(id=_body.user_id).first()
+    project.users.append(victim_user)
+    db.commit()
+
+
+@router.post("/find")
+def get_available_employees(
+    db: DbDependency, user: UserDependency, _body: GetAvailableEmployeesModel
+):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    organization = (
+        db.query(Organization).filter_by(id=action_user.organization_id).first()
+    )
+    employees = organization.employees
+
+    if not employees:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="This organization does not have any employees.",
+        )
+
+    available_employees = []
+
+    for i in organization.employees:
+        if _body.partially_available:
+            pass
+        if _body.close_to_finish:
+            for j in i.projects:
+                d1 = j.deadline_date
+                d2 = date.today()
+
+                monday1 = d2 - timedelta(days=d2.weekday())
+                monday2 = d1 - timedelta(days=d1.weekday())
+
+                # Calculate the difference in weeks
+                weeks_difference = (monday2 - monday1).days // 7
+                print(weeks_difference)
+
+                if weeks_difference < _body.deadline:
+                    available_employees.append(i)
+
+        if _body.unavailable:
+            pass
+        if not i.projects:
+            available_employees.append(i)
+
+    return available_employees

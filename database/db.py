@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.declarative import declarative_base
 
 SQL_USERNAME = "postgres"
@@ -11,6 +11,6 @@ SQLALCHEMY_DATABASE_URL = f"postgresql://{SQL_USERNAME}:{SQL_PASSWORD}@{SQL_HOST
 
 ENGINE = create_engine(SQLALCHEMY_DATABASE_URL)
 
-SESSIONLOCAL = sessionmaker(autocommit=False,autoflush=False, bind=ENGINE)
+SESSIONLOCAL = sessionmaker(autocommit=False, autoflush=False, bind=ENGINE)
 
 Base = declarative_base()

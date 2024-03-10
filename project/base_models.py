@@ -26,3 +26,15 @@ class UpdateProjectModel(BaseModel):
     general_description: Optional[str] = None
     technology_stack: Optional[str] = None
     team_roles: Optional[str] = None
+
+
+class GetAvailableEmployeesModel(BaseModel):
+    partially_available: bool
+    close_to_finish: bool
+    deadline: Optional[int] = None
+    unavailable: bool
+
+
+class AssignUserModel(BaseModel):
+    user_id: str
+    project_id: str

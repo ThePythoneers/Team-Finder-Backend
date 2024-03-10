@@ -184,6 +184,7 @@ def login_for_access_token(
                 "organization": str(user.organization_id),
                 "organization_name": user.organization.organization_name,
                 "roles": [i.role_name for i in user.primary_roles],
+                "department_id": str(user.department_id),
             },
         },
     )
@@ -242,7 +243,7 @@ def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
         username: str = payload.get("sub")
         user_id: int = payload.get("id")
         if username is None or user_id is None:
-            return HTTPException(
+            raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate user.",
             )
