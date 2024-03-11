@@ -79,13 +79,16 @@ def get_deallocation_proposal_from_user(
 
 @router.post("/allocation/accept")
 def accept_allocation_proposal(db: DbDependency, user: UserDependency, _id: UUID):
-    proposal = db.query(AllocationProposal).filter_by(id=_id).delete()
+    proposal = db.query(AllocationProposal).filter_by(id=_id)
 
     # WIP, same as @assign_user_to_project
-    project = db.query(Projects).filter_by(id=proposal.project_id_allocation).first()
-    victim_user = db.query(User).filter_by(id=proposal.user_id).first()
+    project = (
+        db.query(Projects).filter_by(id=proposal.first().project_id_allocation).first()
+    )
+    victim_user = db.query(User).filter_by(id=proposal.first().user_id).first()
     project.users.append(victim_user)
     victim_user.work_hours += project.work_hours
+    proposal.delete()
     db.commit()
 
 
@@ -97,13 +100,19 @@ def reject_allocation_proposal(db: DbDependency, user: UserDependency, _id: UUID
 
 @router.post("/deallocation/accept")
 def accept_deallocation_proposal(db: DbDependency, user: UserDependency, _id: UUID):
-    proposal = db.query(DeallocationProposal).filter_by(id=_id).delete()
+    proposal = db.query(DeallocationProposal).filter_by(id=_id)
 
     # WIP, same as @assign_user_to_project
-    project = db.query(Projects).filter_by(id=proposal.project_id_allocation).first()
-    victim_user = db.query(User).filter_by(id=proposal.user_id).first()
+    project = (
+        db.query(Projects)
+        .filter_by(id=proposal.first().project_id_deallocation)
+        .first()
+    )
+    victim_user = db.query(User).filter_by(id=proposal.first().user_id).first()
     project.users.remove(victim_user)
     victim_user.work_hours -= project.work_hours
+    project.deallocated_users.append(victim_user)
+    proposal.delete()
     db.commit()
 
 

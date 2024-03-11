@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 
 from auth import authentication
-from database.models import Organization, User, Projects
+from database.models import AllocationProposal, Department, Organization, User, Projects
 from database.db import SESSIONLOCAL
 from project.base_models import (
     AssignUserModel,
@@ -50,7 +50,7 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
     if not _body.project_period == "Fixed" and _body.deadline_date is not None:
         return JSONResponse(status_code=400, content="Bad project period.")
 
-    if _body.project_status not in ["Not Started", "Starting"]:
+    if not _body.project_status in ["Not Started", "Starting"]:
         return JSONResponse(
             status_code=400,
             content="You can only assign Not Started and \
@@ -66,6 +66,7 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
         deadline_date=_body.deadline_date,
         technology_stack=_body.technology_stack,
         work_hours=_body.work_hours,
+        organization_id=action_user.organization_id,
     )
     print("test")
     # TODO create_project_model.project_roles.append(_body.team_roles)
@@ -86,12 +87,6 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
         return JSONResponse(
             status_code=400, content="Only a Project Manager can update a new project."
         )
-    if _body.project_status and _body.project_status not in ["Not Started", "Starting"]:
-        return JSONResponse(
-            status_code=400,
-            content="You can only assign Not Started and \
-                             Starting when creating a new project.",
-        )
 
     update_dict = {}
 
@@ -111,11 +106,10 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
         update_dict["technology_stack"] = _body.technology_stack
     if _body.work_hours:
         update_dict["work_hours"] = _body.work_hours
+        for i in project_id.first().users:
+            i.work_hours += _body.work_hours - project_id.first().work_hours
     if _body.team_roles:
         update_dict["team_roles"] = _body.team_roles
-
-    for i in project_id.first().users:
-        i.work_hours += _body.work_hours - project_id.first().work_hours
     print(_body)
     project_id.update(update_dict)
 
@@ -201,21 +195,117 @@ def get_available_employees(
     return available_employees
 
 
-@router.get("/info/{_id}")
+@router.get("/{_id}")
 def get_project_info(db: DbDependency, user: UserDependency, _id: str):
     project = db.query(Projects).filter_by(id=_id).first()
     project_dict = {
-        "project_id": project.id,
+        "project_id": str(project.id),
         "project_name": project.project_name,
         "project_period": project.project_period,
-        "start_date": project.start_date,
-        "deadline_date": project.deadline_date,
+        "start_date": str(project.start_date),
+        "deadline_date": str(project.deadline_date),
         "project_status": project.project_status,
         "description": project.description,
         "users": [{"id": str(i.id), "username:": i.username} for i in project.users],
         "project_roles": [i.custom_role_name for i in project.project_roles],
         "work_hours": project.work_hours,
         "technology_stack": project.technology_stack,
+        "deallocated_users": [
+            {"id": str(i.id), "username:": i.username}
+            for i in project.deallocated_users
+        ],
     }
 
     return JSONResponse(status_code=200, content=project_dict)
+
+
+@router.get("/all/")
+def get_all_projects_info(db: DbDependency, user: UserDependency):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    projects = (
+        db.query(Projects).filter_by(organization_id=action_user.organization_id).all()
+    )
+    if not projects:
+        return JSONResponse(status_code=404, content="Internal error.")
+    project_list = []
+    for i in projects:
+        project_list.append(
+            {
+                "project_id": str(i.id),
+                "project_name": i.project_name,
+                "project_period": i.project_period,
+                "start_date": str(i.start_date),
+                "deadline_date": str(i.deadline_date),
+                "project_status": i.project_status,
+                "description": i.description,
+                "users": [{"id": str(i.id), "username:": i.username} for i in i.users],
+                "project_roles": [i.custom_role_name for i in i.project_roles],
+                "work_hours": i.work_hours,
+                "technology_stack": i.technology_stack,
+            }
+        )
+
+    return JSONResponse(status_code=200, content=project_list)
+
+
+@router.get("/user-info/{_id}")
+def get_project_user_info(db: DbDependency, user: UserDependency, _id: str):
+    users = {}
+    project = db.query(Projects).filter_by(id=_id).first()
+    proposed_to_project = (
+        db.query(AllocationProposal).filter_by(project_id_allocation=_id).all()
+    )
+    users["proposed"] = [i.id for i in proposed_to_project]
+    users["active"] = [i.id for i in project.users]
+    users["deallocated"] = [i.id for i in project.deallocated_users]
+
+    return users
+
+
+@router.get("/info/department/{_id}")
+def get_projects_related_to_department(
+    db: DbDependency,
+    user: UserDependency,
+):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    project = (
+        db.query(Projects).filter_by(organization_id=action_user.organization_id).all()
+    )
+    related_projects = []
+    for i in project:
+        for j in i.users:
+            if j.department_id == action_user.department_id:
+                i.__dict__["evidentiated_user"] = str(j.id)
+                related_projects.append(i)
+
+    return_list = []
+    for i in related_projects:
+        return_list.append(
+            {
+                "evidentiated_user": i.evidentiated_user,
+                "project_name": i.project_name,
+                "deadline_date": i.deadline_date,
+                "project_status": i.project_status,
+                "users": [str(i.id) for i in i.users],
+            }
+        )
+    # department = db.query(Department).filter_by(id=action_user.department_id).first()
+    # projects = []
+    # for i in department.department_users:
+    #     print(i)
+    #     projects.append(i.projects)
+
+    # return_list = []
+
+    # for j in projects:
+    #     for j in i:
+    #         return_list.append(
+    #             {
+    #                 "project_name": i.project_name,
+    #                 "deadline_date": i.deadline_date,
+    #                 "project_status": i.project_status,
+    #                 "users": [str(i.id) for i in i.users],
+    #             }
+    #         )
+
+    return return_list

@@ -65,6 +65,13 @@ user_projects = Table(
     Column("project_id", ForeignKey("projects.id")),
 )
 
+dealloc_user_projects = Table(
+    "dealloc_user_projects",
+    Base.metadata,
+    Column("user_id", ForeignKey("users.id")),
+    Column("project_id", ForeignKey("projects.id")),
+)
+
 
 # la custom roles nu sunt sigur cum functioneaza
 # Mergem pe cea de jos ca asa am gasit pe net si vedem ce face
@@ -223,6 +230,7 @@ class Projects(Base):
     __tablename__ = "projects"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False)
+    organization_id = Column(UUID, ForeignKey("organizations.id"), nullable=False)
     project_name = Column(String, nullable=False)
     project_period = Column(String, nullable=False)  # Fixed, Ongoing
     start_date = Column(DATE, nullable=False)
@@ -236,6 +244,9 @@ class Projects(Base):
         "Custom_Roles", secondary=project_custom_roles, back_populates="projects"
     )
     users = relationship("User", secondary=user_projects, back_populates="projects")
+    deallocated_users = relationship(
+        "User", secondary=dealloc_user_projects, backref="past_projects"
+    )
     work_hours = Column(INTEGER, nullable=False)
 
 
