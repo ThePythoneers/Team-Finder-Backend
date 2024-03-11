@@ -4,6 +4,7 @@ assigning roles, assigning a department, etc.
 """
 
 from typing import Annotated
+from uuid import UUID
 
 
 from fastapi import APIRouter, Depends, status
@@ -11,7 +12,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from database.db import SESSIONLOCAL
-from database.models import User
+from database.models import Projects, User
 from database.models import User_Skills
 
 from auth import authentication
@@ -136,3 +137,31 @@ def delete_skill_from_user(
         user_id=_body.user_id, skill_id=_body.skill_id
     ).delete()
     db.commit()
+
+
+@router.get("/projects")
+def get_past_projects_info(db: DbDependency, user: UserDependency):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    projects = (
+        db.query(Projects).filter_by(organization_id=action_user.organization_id).all()
+    )
+    project_list = []
+    for i in projects:
+        if action_user in i.users:
+            status = (
+                "active"
+                if i.project_status
+                in ["Not Started", "Starting", "In Progress", "Closing"]
+                else "inactive"
+            )
+            project_list.append(
+                {
+                    "project_name": i.project_name,
+                    "project_roles": [
+                        j.custom_role_name for j in i.project_roles
+                    ],  # TODO
+                    "technology_stack": i.technology_stack,
+                    "status": status,
+                }
+            )
+    return project_list
