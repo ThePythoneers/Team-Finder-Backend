@@ -84,6 +84,7 @@ def create_user_employee(
         username=create_user_request.username,
         email=create_user_request.email,
         hashed_password=bcrypt_context.hash(create_user_request.password),
+        work_hours=0,
     )
 
     create_user_model.primary_roles.append(
@@ -105,12 +106,12 @@ def create_user(db: DbDependency, create_user_request: RegisterOwner):
     """
     if not validate_email(create_user_request.email):
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST, content="invalid e-mail"
+            status_code=status.HTTP_400_BAD_REQUEST, content="Invalid e-mail"
         )
 
     if not validate_password(create_user_request.password):
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST, content="invalid password"
+            status_code=status.HTTP_400_BAD_REQUEST, content="Invalid password"
         )
 
     if (
@@ -119,7 +120,7 @@ def create_user(db: DbDependency, create_user_request: RegisterOwner):
         .first()
     ):
         return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED, content="e-mail already exists"
+            status_code=status.HTTP_401_UNAUTHORIZED, content="E-mail already exists"
         )
 
     user_id = uuid.uuid4()
@@ -177,12 +178,12 @@ def login_for_access_token(
         status_code=status.HTTP_200_OK,
         content={
             "access_token": token,
-            "token_type": "bearer",
+            "token_type": "Bearer",
             "user": {
-                "uuid": str(user.id),
-                "name": user.username,
+                "id": str(user.id),
+                "username": user.username,
                 "email": user.email,
-                "organization": str(user.organization_id),
+                "organization_id": str(user.organization_id),
                 "organization_name": user.organization.organization_name,
                 "roles": [i.role_name for i in user.primary_roles],
                 "department_id": str(user.department_id),
@@ -199,13 +200,15 @@ def get_info_from_token(db: DbDependency, _token: str):
         status_code=status.HTTP_200_OK,
         content={
             "access_token": _token,
-            "token_type": "bearer",
+            "token_type": "Bearer",
             "user": {
                 "id": str(user.id),
                 "username": user.username,
                 "email": user.email,
+                "organization_id": str(user.organization_id),
                 "organization_name": user.organization.organization_name,
                 "roles": [i.role_name for i in user.primary_roles],
+                "department_id": str(user.department_id),
             },
         },
     )
