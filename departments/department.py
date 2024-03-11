@@ -118,7 +118,8 @@ def delete_department(
         )
         .first()
     )
-
+    if not check_department:
+        return JSONResponse(status_code=404, content="This department does not exist.")
     if check_department.organization_id != action_user.organization_id:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -183,6 +184,7 @@ def assign_department_manager(
         )
 
     department.department_manager = victim_user.id
+    victim_user.department_id = department.id
     db.commit()
 
 
@@ -192,6 +194,7 @@ def delete_department_manager(
 ):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     department = db.query(Department).filter_by(id=_body.department_id).first()
+    victim_user = db.query(User).filter_by(id=department.department_manager).first()
 
     if not department:
         return JSONResponse(
@@ -211,6 +214,7 @@ def delete_department_manager(
         )
 
     department.department_manager = None
+    victim_user.department_id = None
     db.commit()
 
 
@@ -223,21 +227,21 @@ def get_unassigned_departemnt_users(db: DbDependency, user: UserDependency):
         .first()
         .employees
     )
+
     unassigned_employees = [i for i in employees_db if i.department_id is None]
-    dict_employees = [i.__dict__ for i in employees_db if i.department_id is None]
+    dict_employees = [
+        i.__dict__ for i in unassigned_employees if i.department_id is None
+    ]
 
     for i, j in zip(dict_employees, unassigned_employees):
         i.pop("hashed_password")
-        i["primary_roles"] = j.primary_roles
-
-    # nici nu stau sa descifrez dar la roles sa imi dai doar numele rolului nu doar id-ul
-    # te ai trezit mai cu mot aici si ai zis sa imi dai si id-ul
+        i["primary_roles"] = [x.role_name for x in j.primary_roles]
 
     return unassigned_employees
 
 
-@router.get("/users/{_id}")
-def get_users_from_department(db: DbDependency, user: UserDependency, _id: UUID):
+@router.get("/users/")
+def get_users_from_department(db: DbDependency, user: UserDependency):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     employees_db = (
         db.query(Organization)
@@ -246,10 +250,21 @@ def get_users_from_department(db: DbDependency, user: UserDependency, _id: UUID)
         .employees
     )
 
-    departments = db.query(Department).filter_by(department_manager=user["id"])
-    
-    assigned_employees = [i for i in employees_db if i.department_id == _id]
-    dict_employees = [i.__dict__ for i in employees_db if i.department_id == _id]
+    if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=401,
+            content="You need the Department Manager role to do this action.",
+        )
+
+    department = db.query(Department).filter_by(id=action_user.department_id).first()
+
+    if not department:
+        return JSONResponse(
+            status_code=401, content="You are not managing any departments right now."
+        )
+
+    assigned_employees = [i for i in department.department_users]
+    dict_employees = [i.__dict__ for i in department.department_users]
 
     if not assigned_employees:
         return JSONResponse(
@@ -259,10 +274,7 @@ def get_users_from_department(db: DbDependency, user: UserDependency, _id: UUID)
 
     for i, j in zip(dict_employees, assigned_employees):
         i.pop("hashed_password")
-        i["primary_roles"] = j.primary_roles
-
-    # nici nu stau sa descifrez dar la roles sa imi dai doar numele rolului nu doar id-ul
-    # te ai trezit mai cu mot aici si ai zis sa imi dai si id-ul
+        i["primary_roles"] = [x.role_name for x in j.primary_roles]
 
     return assigned_employees
 

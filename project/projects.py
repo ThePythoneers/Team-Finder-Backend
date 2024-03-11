@@ -199,3 +199,23 @@ def get_available_employees(
         if not i.projects:
             available_employees.append(i)
     return available_employees
+
+
+@router.get("/info/{_id}")
+def get_project_info(db: DbDependency, user: UserDependency, _id: str):
+    project = db.query(Projects).filter_by(id=_id).first()
+    project_dict = {
+        "project_id": project.id,
+        "project_name": project.project_name,
+        "project_period": project.project_period,
+        "start_date": project.start_date,
+        "deadline_date": project.deadline_date,
+        "project_status": project.project_status,
+        "description": project.description,
+        "users": [{"id": str(i.id), "username:": i.username} for i in project.users],
+        "project_roles": [i.custom_role_name for i in project.project_roles],
+        "work_hours": project.work_hours,
+        "technology_stack": project.technology_stack,
+    }
+
+    return JSONResponse(status_code=200, content=project_dict)

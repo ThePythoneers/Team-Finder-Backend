@@ -93,3 +93,21 @@ def accept_allocation_proposal(db: DbDependency, user: UserDependency, _id: UUID
 def reject_allocation_proposal(db: DbDependency, user: UserDependency, _id: UUID):
     db.query(AllocationProposal).filter_by(id=_id).delete()
     db.commit()
+
+
+@router.post("/deallocation/accept")
+def accept_deallocation_proposal(db: DbDependency, user: UserDependency, _id: UUID):
+    proposal = db.query(DeallocationProposal).filter_by(id=_id).delete()
+
+    # WIP, same as @assign_user_to_project
+    project = db.query(Projects).filter_by(id=proposal.project_id_allocation).first()
+    victim_user = db.query(User).filter_by(id=proposal.user_id).first()
+    project.users.remove(victim_user)
+    victim_user.work_hours -= project.work_hours
+    db.commit()
+
+
+@router.post("/deallocation/reject")
+def reject_deallocation_proposal(db: DbDependency, user: UserDependency, _id: UUID):
+    db.query(DeallocationProposal).filter_by(id=_id).delete()
+    db.commit()
