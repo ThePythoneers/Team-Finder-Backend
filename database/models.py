@@ -78,6 +78,9 @@ class User_Skills(Base):
     skill_id = Column(UUID, ForeignKey("skills.id"))
     skill_level = Column(INTEGER)
     skill_experience = Column(INTEGER)
+    training_title = Column(String)
+    training_description = Column(String)
+
     user = relationship("User", back_populates="skill_level")
 
 
