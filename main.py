@@ -20,6 +20,7 @@ from departments import department
 from skills import skill
 from project import projects
 from proposals import proposal
+from chatgpt_integration import gpt
 
 app = FastAPI()
 
@@ -42,6 +43,7 @@ app.include_router(department.router)
 app.include_router(skill.router)
 app.include_router(projects.router)
 app.include_router(proposal.router)
+app.include_router(gpt.router)
 
 
 @app.exception_handler(RequestValidationError)
