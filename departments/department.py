@@ -139,6 +139,19 @@ def assign_department_manager(
     victim_user = db.query(User).filter_by(id=_body.manager_id).first()
     department = db.query(Department).filter_by(id=_body.department_id).first()
 
+    departments = (
+        db.query(Department)
+        .filter_by(organization_id=action_user.organization_id)
+        .all()
+    )
+
+    for department in departments:
+        if victim_user.id == department.department_manager:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content="This user is already a manager for another department",
+            )
+
     if not department:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -217,6 +230,9 @@ def get_unassigned_departemnt_users(db: DbDependency, user: UserDependency):
         i.pop("hashed_password")
         i["primary_roles"] = j.primary_roles
 
+    # nici nu stau sa descifrez dar la roles sa imi dai doar numele rolului nu doar id-ul
+    # te ai trezit mai cu mot aici si ai zis sa imi dai si id-ul
+
     return unassigned_employees
 
 
@@ -230,6 +246,8 @@ def get_users_from_department(db: DbDependency, user: UserDependency, _id: UUID)
         .employees
     )
 
+    departments = db.query(Department).filter_by(department_manager=user["id"])
+    
     assigned_employees = [i for i in employees_db if i.department_id == _id]
     dict_employees = [i.__dict__ for i in employees_db if i.department_id == _id]
 
@@ -242,6 +260,9 @@ def get_users_from_department(db: DbDependency, user: UserDependency, _id: UUID)
     for i, j in zip(dict_employees, assigned_employees):
         i.pop("hashed_password")
         i["primary_roles"] = j.primary_roles
+
+    # nici nu stau sa descifrez dar la roles sa imi dai doar numele rolului nu doar id-ul
+    # te ai trezit mai cu mot aici si ai zis sa imi dai si id-ul
 
     return assigned_employees
 
@@ -284,7 +305,9 @@ def add_user_to_department(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content="This user is a Department Manager and cannot be added to the department.",
         )
-    department = db.query(Department).filter_by(id=action_user.department_id).first()
+    department = (
+        db.query(Department).filter_by(department_manager=action_user.id).first()
+    )
 
     if not department:
         return JSONResponse(
@@ -344,13 +367,15 @@ def get_departments(db: DbDependency, user: UserDependency):
 
     return_departments = []
     for i in departments:
-        manager_email = db.query(User).filter_by(id=i.department_manager).first()
-        manager_email = manager_email.email if manager_email else None
+        manager = db.query(User).filter_by(id=i.department_manager).first()
+        manager_email = manager.email if manager else None
         return_departments.append(
             {
                 "id": str(i.id),
                 "department_name": i.department_name,
-                "department_manager": i.department_manager,
+                "department_manager": (
+                    str(i.department_manager) if i.department_manager else None
+                ),
                 "manager_email": manager_email,
                 "department_users": [str(i.id) for i in i.department_users],
             }

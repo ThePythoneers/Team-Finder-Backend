@@ -114,9 +114,9 @@ def get_employees_from_organization(db: DbDependency, user: UserDependecy):
     for j in db_org.employees:
         l.append(
             {
-                "user": j.username,
-                "email": j.email,
                 "id": str(j.id),
+                "username": j.username,
+                "email": j.email,
                 "primary_roles": [i.role_name for i in j.primary_roles],
             }
         )
