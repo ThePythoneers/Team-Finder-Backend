@@ -42,6 +42,24 @@ def create_role_in_project(
     """
     action_user = db.query(User).filter_by(id=user["id"]).first()
     project = db.query(Projects).filter_by(id=_body.project_id).first()
+
+    if not "Organization Admin" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="Only an Organization Admin is able to create custom roles.",
+        )
+    if not project:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="This project does not exist.",
+        )
+
+    if project.organization_id != action_user.organization_id:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="You cannot create a custom role on a project from another organization.",
+        )
+
     project.project_roles.append(
         Custom_Roles(
             custom_role_name=_body.role_name,
@@ -55,9 +73,36 @@ def create_role_in_project(
 def assign_role_to_user(
     user: UserDependency, db: DbDependency, _body: AssignCustomRoleModel
 ):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    victim_user = db.query(User).filter_by(id=_body.user_id).first()
+    project = db.query(Projects).filter_by(id=_body.project_id).first()
+    custom_role = db.query(Custom_Roles).filter_by(id=_body.role_id).first()
+
+    if (
+        victim_user.organization_id != project.organization_id
+        and project.organization_id != custom_role.organization_id
+    ):
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="The fields specified are not from the same organization.",
+        )
+
+    if action_user.organization_id != victim_user.organization_id:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="This user is not from your organization.",
+        )
+
     create_user_custom_role_model = Users_Custom_Roles(
         user_id=_body.user_id, project_id=_body.project_id, custom_role_id=_body.role_id
     )
+
+    if not "Project Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="Only a Project Manager can assign roles to an user.",
+        )
+
     db.add(create_user_custom_role_model)
     db.commit()
 
@@ -66,6 +111,30 @@ def assign_role_to_user(
 def delete_role_from_user(
     user: UserDependency, db: DbDependency, _body: AssignCustomRoleModel
 ):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    victim_user = db.query(User).filter_by(id=_body.user_id).first()
+    project = db.query(Projects).filter_by(id=_body.project_id).first()
+    custom_role = db.query(Custom_Roles).filter_by(id=_body.role_id).first()
+
+    if (
+        victim_user.organization_id != project.organization_id
+        and project.organization_id != custom_role.organization_id
+    ):
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="The fields specified are not from the same organization.",
+        )
+
+    if action_user.organization_id != victim_user.organization_id:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="This user is not from your organization.",
+        )
+    if not "Project Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="Only a Project Manager can assign roles to an user.",
+        )
     db.query(Users_Custom_Roles).filter_by(
         project_id=_body.project_id, custom_role_id=_body.role_id, user_id=_body.user_id
     ).delete()
@@ -73,7 +142,7 @@ def delete_role_from_user(
 
 
 @router.get("/user")
-def get_all_role_from_user(user: UserDependency, db: DbDependency, _id: UUID):
+def get_all_roles_from_user(user: UserDependency, db: DbDependency, _id: UUID):
     roles = db.query(Users_Custom_Roles).filter_by(user_id=_id).all()
     return_list = list()
     for i in roles:

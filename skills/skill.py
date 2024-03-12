@@ -4,7 +4,14 @@ from fastapi import APIRouter, status, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from database.models import Skill, Skill_Category, User, User_Skills
+from database.models import (
+    Department,
+    Department_projects,
+    Skill,
+    Skill_Category,
+    User,
+    User_Skills,
+)
 from database.db import SESSIONLOCAL
 from auth import authentication
 from skills.base_models import CreateSkillModel
@@ -42,9 +49,12 @@ def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel
         skill_name=_body.skill_name,
         skill_description=_body.description,
         organization_id=action_user.organization_id,
-        author=_body.author,
+        author=action_user.id,
     )
     create_skill_model.skill_category = _body.skill_category
+    for i in _body.departments:
+        department = db.query(Department).filter_by(id=i).first()
+        create_skill_model.departments.append(department)
     db.add(create_skill_model)
     db.commit()
 

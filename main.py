@@ -7,11 +7,14 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from sqlalchemy.schema import MetaData
 import uvicorn
+import colorama
 
 from auth import authentication
 from account import profile
-from database.db import ENGINE
+from database.create_roles import create_roles
+from database.db import ENGINE, SESSIONLOCAL, Base
 from database import models
 from custom_roles import croles
 from organization import organizations
@@ -23,6 +26,22 @@ from proposals import proposal
 from chatgpt_integration import gpt
 
 app = FastAPI()
+metadata = MetaData()
+metadata.reflect(ENGINE)
+
+DEBUG_RESET_DATABASE_WHEN_STARTING = True
+
+
+def get_db():
+    """
+    creates a db session
+    """
+    try:
+        db = SESSIONLOCAL()
+        yield db
+    finally:
+        db.close()
+
 
 models.Base.metadata.create_all(bind=ENGINE)
 
@@ -68,4 +87,16 @@ def root():
 
 
 if __name__ == "__main__":
+    if DEBUG_RESET_DATABASE_WHEN_STARTING:
+        print(
+            f"{colorama.Fore.GREEN}DEBUG: {colorama.Fore.WHITE}   Database reinitialized (if you don't want this set DEBUG_RESET_DATABASE_WHEN_STARTING to False)."
+        )
+        for tbl in reversed(metadata.sorted_tables):
+            tbl.drop(ENGINE)
+            tbl.create(ENGINE)
+        create_roles()
+        print(
+            f"{colorama.Fore.GREEN}DETECTED: {colorama.Fore.WHITE} Database reset, created primary roles."
+        )
+
     uvicorn.run(app="main:app", reload=True)

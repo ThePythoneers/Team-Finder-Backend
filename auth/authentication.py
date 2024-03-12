@@ -60,14 +60,22 @@ def create_user_employee(
     """
     Register a user in an already existing organization a.k.a employee.
     """
+
+    organization = db.query(models.Organization).filter_by(custom_link=linkref).first()
+    if not organization:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="The refferal you introduced does not exist. Please speak with your team about sending you a valid refferal.",
+        )
+
     if not validate_email(create_user_request.email):
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST, content="invalid e-mail"
+            status_code=status.HTTP_400_BAD_REQUEST, content="Invalid e-mail"
         )
 
     if not validate_password(create_user_request.password):
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST, content="invalid password"
+            status_code=status.HTTP_400_BAD_REQUEST, content="Invalid password"
         )
 
     if (
@@ -76,7 +84,7 @@ def create_user_employee(
         .first()
     ):
         return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED, content="e-mail already exists"
+            status_code=status.HTTP_401_UNAUTHORIZED, content="E-mail already exists"
         )
 
     create_user_model = models.User(
@@ -91,11 +99,13 @@ def create_user_employee(
         db.query(models.Primary_Roles).filter_by(role_name="Employee").first()
     )
 
-    organization = db.query(models.Organization).filter_by(custom_link=linkref).first()
     organization.employees.append(create_user_model)
     db.add(create_user_model)
     db.add(organization)
     db.commit()
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED, content="Account created succesfully."
+    )
 
 
 @router.post("/register/organization", status_code=status.HTTP_201_CREATED)
@@ -152,7 +162,9 @@ def create_user(db: DbDependency, create_user_request: RegisterOwner):
     )
     db.commit()
 
-    return JSONResponse(status_code=201, content="Account created.")
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED, content="Account created succesfully."
+    )
 
 
 @router.post("/token")
@@ -187,6 +199,7 @@ def login_for_access_token(
                 "organization_name": user.organization.organization_name,
                 "roles": [i.role_name for i in user.primary_roles],
                 "department_id": str(user.department_id),
+                "work_hours": user.work_hours,
             },
         },
     )
@@ -196,6 +209,13 @@ def login_for_access_token(
 def get_info_from_token(db: DbDependency, _token: str):
     _id = get_current_user(_token)["id"]
     user = db.query(models.User).filter_by(id=_id).first()
+
+    if not user:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content="Internal server error, an user should exist but it does not.",
+        )
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
@@ -209,6 +229,7 @@ def get_info_from_token(db: DbDependency, _token: str):
                 "organization_name": user.organization.organization_name,
                 "roles": [i.role_name for i in user.primary_roles],
                 "department_id": str(user.department_id),
+                "work_hours": user.work_hours,
             },
         },
     )

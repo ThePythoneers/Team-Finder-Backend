@@ -72,9 +72,12 @@ dealloc_user_projects = Table(
     Column("project_id", ForeignKey("projects.id")),
 )
 
-
-# la custom roles nu sunt sigur cum functioneaza
-# Mergem pe cea de jos ca asa am gasit pe net si vedem ce face
+project_technology = Table(
+    "technology_projects",
+    Base.metadata,
+    Column("technology_id", ForeignKey("technology_stack.id")),
+    Column("project_id", ForeignKey("projects.id")),
+)
 
 
 # pylint: disable=invalid-name
@@ -243,7 +246,6 @@ class Projects(Base):
         String, nullable=False
     )  # Not started | Starting | In Progress | Closing | Closed
     description = Column(String, nullable=False)
-    technology_stack = Column(String)  # idk
     project_roles = relationship(
         "Custom_Roles", secondary=project_custom_roles, back_populates="projects"
     )
@@ -252,6 +254,9 @@ class Projects(Base):
         "User", secondary=dealloc_user_projects, backref="past_projects"
     )
     work_hours = Column(INTEGER, nullable=False)
+    technologies = relationship(
+        "TechnologyStack", secondary=project_technology, back_populates="projects"
+    )
 
 
 class AllocationProposal(Base):
@@ -272,3 +277,15 @@ class DeallocationProposal(Base):
     )
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     reason = Column(String)
+
+
+class TechnologyStack(Base):
+    __tablename__ = "technology_stack"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False)
+    tech_name = Column(String)
+    organization_id = Column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False
+    )
+    projects = relationship(
+        "Projects", secondary=project_technology, back_populates="technologies"
+    )

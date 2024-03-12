@@ -389,7 +389,8 @@ def get_departments(db: DbDependency, user: UserDependency):
                     str(i.department_manager) if i.department_manager else None
                 ),
                 "manager_email": manager_email,
-                "department_users": [str(i.id) for i in i.department_users],
+                "department_users": [str(j.id) for j in i.department_users],
+                "skills": [j.skill_name for j in i.skills],
             }
         )
     return JSONResponse(status_code=status.HTTP_200_OK, content=return_departments)

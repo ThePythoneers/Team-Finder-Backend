@@ -48,7 +48,7 @@ def get_organization_info_from_ref(db: DbDependency, ref: str):
         )
 
     return JSONResponse(
-        status_code=200,
+        status_code=status.HTTP_200_OK,
         content={
             "organization_name": db_org.organization_name,
             "hq_address": db_org.hq_address,
@@ -57,17 +57,18 @@ def get_organization_info_from_ref(db: DbDependency, ref: str):
 
 
 @router.get("/")
-def get_organization_info(db: DbDependency, user: UserDependecy, org: str):
+def get_organization_info(db: DbDependency, user: UserDependecy, org: UUID):
     """
     Gets information for the organization page from the id.
     """
     try:
-        UUID(org)
+        UUID(str(org), version=4)
     except ValueError:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST, content="invalid uuid"
         )
 
+    action_user = db.query(User).filter_by(id=user["id"]).first()
     db_org = db.query(Organization).filter_by(id=org).first()
 
     if not db_org:
@@ -76,14 +77,14 @@ def get_organization_info(db: DbDependency, user: UserDependecy, org: str):
             content="This organization does not exist.",
         )
 
-    if str(db.query(User).filter_by(id=user["id"]).first().organization_id) != org:
+    if action_user.organization_id != org:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content="You cannot view information about an organization other than yours.",
         )
 
     return JSONResponse(
-        status_code=200,
+        status_code=status.HTTP_200_OK,
         content={
             "organization_id": str(db_org.id),
             "organization_name": db_org.organization_name,
@@ -99,20 +100,28 @@ def get_organization_info(db: DbDependency, user: UserDependecy, org: str):
 @router.put("/ref/refresh")
 def refresh_ref_link(db: DbDependency, user: UserDependecy):
     action_user = db.query(User).filter_by(id=user["id"]).first()
+
+    if not "Organization Admin" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=200,
+            content="Only an Organization Admin can refresh the refferal.",
+        )
     db_org = db.query(Organization).filter_by(id=action_user.organization_id).first()
     db_org.custom_link = create_link_ref(10)
     db.commit()
-    return db_org.custom_link
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content={"refferal": db_org.custom_link}
+    )
 
 
 @router.get("/employees")
 def get_employees_from_organization(db: DbDependency, user: UserDependecy):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     db_org = db.query(Organization).filter_by(id=action_user.organization_id).first()
-    l = []
+    return_list = []
 
     for j in db_org.employees:
-        l.append(
+        return_list.append(
             {
                 "id": str(j.id),
                 "username": j.username,
@@ -121,4 +130,4 @@ def get_employees_from_organization(db: DbDependency, user: UserDependecy):
             }
         )
 
-    return JSONResponse(status_code=200, content=l)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=return_list)

@@ -81,7 +81,13 @@ def remove_role_from_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content="You cannot remove your own role.",
         )
-    victim_user.primary_roles.remove(role_to_delete)
+    if role_to_delete in victim_user.primary_roles:
+        victim_user.primary_roles.remove(role_to_delete)
+    else:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content=f"This user does not have the {_body.role_name} role.",
+        )
     db.commit()
 
 

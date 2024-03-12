@@ -7,7 +7,15 @@ from sqlalchemy.orm import Session
 
 
 from auth import authentication
-from database.models import AllocationProposal, Department, Organization, User, Projects
+from database.models import (
+    AllocationProposal,
+    Custom_Roles,
+    Department,
+    Organization,
+    TechnologyStack,
+    User,
+    Projects,
+)
 from database.db import SESSIONLOCAL
 from project.base_models import (
     AssignUserModel,
@@ -44,19 +52,36 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
 
     if "Project Manager" not in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
-            status_code=400, content="Only a Project Manager can create a new project."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="Only a Project Manager can create a new project.",
         )
-
-    if not _body.project_period == "Fixed" and _body.deadline_date is not None:
-        return JSONResponse(status_code=400, content="Bad project period.")
 
     if not _body.project_status in ["Not Started", "Starting"]:
         return JSONResponse(
-            status_code=400,
-            content="You can only assign Not Started and \
-                             Starting when creating a new project.",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="You can only assign Not Started and Starting when creating a new project.",
         )
 
+    if _body.project_period == "Fixed" and not _body.deadline_date:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="If the project has a fixed project period, you must specify the deadline.",
+        )
+    elif _body.project_period != "Fixed" and _body.deadline_date:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="You cannot specify a deadline if the project period is not fixed.",
+        )
+    if (_body.deadline_date - _body.start_date).total_seconds() < 0:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="The deadline cannot be assigned before the start of the project.",
+        )
+    if _body.work_hours < 0 or _body.work_hours > 8:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="Work hours needs to be a value between 1 and 8",
+        )
     create_project_model = Projects(
         project_name=_body.project_name,
         project_period=_body.project_period,
@@ -64,13 +89,16 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
         description=_body.general_description,
         start_date=_body.start_date,
         deadline_date=_body.deadline_date,
-        technology_stack=_body.technology_stack,
         work_hours=_body.work_hours,
         organization_id=action_user.organization_id,
     )
-    print("test")
-    # TODO create_project_model.project_roles.append(_body.team_roles)
 
+    for i in _body.technology_stack:
+        create_tech_model = TechnologyStack(
+            tech_name=i, organization_id=action_user.organization_id
+        )
+        create_project_model.technologies.append(create_tech_model)
+    print("test")
     db.add(create_project_model)
     db.commit()
 
@@ -88,6 +116,30 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
             status_code=400, content="Only a Project Manager can update a new project."
         )
 
+    if _body.project_period == "Fixed" and not _body.deadline_date:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="If the project has a fixed project period, you must specify the deadline.",
+        )
+    elif _body.project_period != "Fixed" and _body.deadline_date:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="You cannot specify a deadline if the project period is not fixed.",
+        )
+
+    if _body.deadline_date:
+        if (_body.deadline_date - _body.start_date).total_seconds() < 0:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content="The deadline cannot be assigned before the start of the project.",
+            )
+
+    if _body.work_hours:
+        if _body.work_hours < 0 or _body.work_hours > 8:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content="Work hours needs to be a value between 1 and 8",
+            )
     update_dict = {}
 
     if _body.project_name:
@@ -101,15 +153,23 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
     if _body.project_status:
         update_dict["project_status"] = _body.project_status
     if _body.general_description:
-        update_dict["general_description"] = _body.general_description
+        update_dict["description"] = _body.general_description
     if _body.technology_stack:
-        update_dict["technology_stack"] = _body.technology_stack
+        for i in _body.technology_stack:
+            create_tech_model = TechnologyStack(
+                tech_name=i, organization_id=action_user.organization_id
+            )
+            tech = project_id.first()  # Garbage collection bug
+            tech.technologies.append(create_tech_model)
     if _body.work_hours:
         update_dict["work_hours"] = _body.work_hours
         for i in project_id.first().users:
             i.work_hours += _body.work_hours - project_id.first().work_hours
     if _body.team_roles:
-        update_dict["team_roles"] = _body.team_roles
+        for i in _body.technology_stack:
+            custom_role = db.query(Custom_Roles).filter_by(i.id).first()
+            tech = project_id.first()  # Garbage collection bug
+            tech.project_roles.append(custom_role)
     print(_body)
     project_id.update(update_dict)
 
@@ -124,6 +184,8 @@ def delete_project(db: DbDependency, user: UserDependency, _id: UUID):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     project = db.query(Projects).filter_by(id=_id)
 
+    if not project:
+        return JSONResponse(status_code=400, content="This project does not exist.")
     if "Project Manager" not in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
             status_code=400, content="Only a Project Manager can create a new project."
@@ -209,7 +271,7 @@ def get_project_info(db: DbDependency, user: UserDependency, _id: str):
         "users": [{"id": str(i.id), "username:": i.username} for i in project.users],
         "project_roles": [i.custom_role_name for i in project.project_roles],
         "work_hours": project.work_hours,
-        "technology_stack": project.technology_stack,
+        "technology_stack": [i.tech_name for i in i.technologies],
         "deallocated_users": [
             {"id": str(i.id), "username:": i.username}
             for i in project.deallocated_users
@@ -241,7 +303,11 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
                 "users": [{"id": str(i.id), "username:": i.username} for i in i.users],
                 "project_roles": [i.custom_role_name for i in i.project_roles],
                 "work_hours": i.work_hours,
-                "technology_stack": i.technology_stack,
+                "technology_stack": [i.tech_name for i in i.technologies],
+                "deallocated_users": [
+                    {"id": str(j.id), "username:": j.username}
+                    for j in i.deallocated_users
+                ],
             }
         )
 
