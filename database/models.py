@@ -87,6 +87,7 @@ class User_Skills(Base):
     skill_experience = Column(INTEGER)
     training_title = Column(String)
     training_description = Column(String)
+    project_link = Column(String)
 
     user = relationship("User", back_populates="skill_level")
 

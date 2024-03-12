@@ -103,7 +103,8 @@ def assign_skill_to_user(
         skill_level=_body.level,
         skill_experience=_body.experience,
         training_title = _body.training_title,
-        training_description = _body.training_description
+        training_description = _body.training_description,
+        project_link = _body.project_link
     )
 
     db.add(create_user_skills_model)
