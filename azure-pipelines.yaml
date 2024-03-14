@@ -1,0 +1,39 @@
+# Python package
+
+pool: 'default'
+
+variables:
+  python.version: '3.12'
+  projectRoot: '.'
+
+steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python $(python.version)'
+    inputs:
+      versionSpec: '$(python.version)'
+
+  - script: |
+      python3.12 -m pip install --upgrade pip
+      pip3.12 install setup
+      pip3.12 install --target="./.python_packages/lib/site-packages" -r ./requirements.txt
+    workingDirectory: $(projectRoot)
+    displayName: "Install requirements"
+  
+  - task: ArchiveFiles@2
+    displayName: 'Archive files'
+    inputs:
+      rootFolderOrFile: '$(projectRoot)'
+      includeRootFolder: false
+      archiveType: zip
+      archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+      replaceExistingArchive: true
+  
+  - task: AzureWebApp@1
+    displayName: 'Deploy Azure Web App'
+    inputs:
+      azureSubscription: 'the-pythoneers-service-connection'
+      appType: 'webAppLinux'
+      appName: "atc-2024-thepythoneers-be-linux-web-app"
+      runtimeStack: 'PYTHON|3.12'
+      package: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+      startUpCommand: 'uvicorn main:app --reload --host 0.0.0.0'
