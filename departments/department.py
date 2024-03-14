@@ -272,7 +272,7 @@ def get_users_from_department(db: DbDependency, user: UserDependency):
 
     for i, j in zip(dict_employees, assigned_employees):
         i.pop("hashed_password")
-        i["primary_roles"] = [x.role_name for x in j.primary_roles]
+        i["roles"] = [x.role_name for x in j.primary_roles]
 
     return assigned_employees
 

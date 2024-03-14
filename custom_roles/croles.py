@@ -7,6 +7,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -153,9 +154,8 @@ def get_all_custom_roles(user: UserDependency, db: DbDependency):
         .filter_by(organization_id=str(action_user.organization_id))
         .all()
     )
-
     if roles:
-        return JSONResponse(status_code=status.HTTP_200_OK, content=[roles])
+        return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_encoder(roles))
     return []
 
 

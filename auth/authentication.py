@@ -198,7 +198,9 @@ def login_for_access_token(
                 "organization_id": str(user.organization_id),
                 "organization_name": user.organization.organization_name,
                 "roles": [i.role_name for i in user.primary_roles],
-                "department_id": str(user.department_id),
+                "department_id": (
+                    str(user.department_id) if user.department_id else None
+                ),
                 "work_hours": user.work_hours,
             },
         },
@@ -228,7 +230,9 @@ def get_info_from_token(db: DbDependency, _token: str):
                 "organization_id": str(user.organization_id),
                 "organization_name": user.organization.organization_name,
                 "roles": [i.role_name for i in user.primary_roles],
-                "department_id": str(user.department_id),
+                "department_id": (
+                    str(user.department_id) if user.department_id else None
+                ),
                 "work_hours": user.work_hours,
             },
         },

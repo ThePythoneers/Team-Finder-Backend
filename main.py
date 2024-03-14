@@ -37,7 +37,7 @@ app = FastAPI()
 metadata = MetaData()
 metadata.reflect(ENGINE)
 
-DEBUG_RESET_DATABASE_WHEN_STARTING = False
+DEBUG_RESET_DATABASE_WHEN_STARTING = True
 
 
 def get_db():

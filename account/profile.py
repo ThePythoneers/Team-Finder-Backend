@@ -46,14 +46,14 @@ def get_user_info(db: DbDependency, auth: UserDependency, user_id: UUID):
     #     )
 
     try:
-        UUID(str(user), version=4)
+        UUID(str(user_id), version=4)
     except:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content="The UUID introduced is not valid.",
         )
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter_by(id=user_id).first()
     if not user:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -70,12 +70,13 @@ def get_user_info(db: DbDependency, auth: UserDependency, user_id: UUID):
         )
 
     user_data = {
+        "id": str(user.id),
         "username": user.username,
         "email": user.email,
+        "organization_id": str(user.organization_id),
         "organization_name": user.organization.organization_name,
-        "address": user.organization.hq_address,
         "roles": [i.role_name for i in user.primary_roles],
-        "department_name": str(user.department.department_name),
+        "department_id": (str(user.department_id) if user.department_id else None),
         "work_hours": user.work_hours,
     }
     return JSONResponse(content=user_data, status_code=status.HTTP_200_OK)
