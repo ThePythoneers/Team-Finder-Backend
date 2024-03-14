@@ -167,14 +167,16 @@ def get_skill_categories(db: DbDependency, user: UserDependency):
 @router.get("/category/{_id}")
 def get_skill_category_by_id(db: DbDependency, user: UserDependency, _id: str):
     categories = db.query(Skill_Category).filter_by(id=_id).first()
-    return_list.append(
-        {
-            "id": i.id,
-            "category_name": i.category_name,
-            "organization_id": i.organization_id,
-        }
-    )
-    return categories
+    return_list = []
+    for i in categories:
+        return_list.append(
+            {
+                "id": i.id,
+                "category_name": i.category_name,
+                "organization_id": i.organization_id,
+            }
+        )
+    return return_list
 
 
 @router.get("/")
