@@ -29,6 +29,7 @@ def get_db():
 DbDependency = Annotated[Session, Depends(get_db)]
 UserDependency = Annotated[dict, Depends(authentication.get_current_user)]
 
+
 @router.post("/additional-context")
 def get_additional_context_from_database(
     db: DbDependency, user: UserDependency, _body: GetChatGPTInfo
@@ -36,7 +37,9 @@ def get_additional_context_from_database(
 
     action_user = db.query(User).filter_by(id=user["id"]).first()
 
-    organization = db.query(Organization).filter_by(id=action_user.organization_id).first()
+    organization = (
+        db.query(Organization).filter_by(id=action_user.organization_id).first()
+    )
 
     if not organization:
         return JSONResponse(
@@ -45,10 +48,6 @@ def get_additional_context_from_database(
 
     employees_list = []
     for i in organization.employees:
-        employees_list.append({
-            "user_name": i.username
-        })
+        employees_list.append({"user_name": i.username})
 
     return chatgpt(_body.message, employees_list)
-
-

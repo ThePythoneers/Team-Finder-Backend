@@ -141,3 +141,7 @@ def assign_role(db, user, user_id, _role_name, is_in_registration):
 
     victim_user.primary_roles.append(role_to_add)
     db.commit()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content="Role assigned succesfully"
+    )

@@ -14,7 +14,7 @@ import colorama
 from auth import authentication
 from account import profile
 from database.create_roles import create_roles
-from database.db import ENGINE, SESSIONLOCAL, Base
+from database.db import ENGINE, SESSIONLOCAL, Base, DEBUG_LOCAL_SWITCH
 from database import models
 from custom_roles import croles
 from organization import organizations
@@ -37,7 +37,7 @@ app = FastAPI()
 metadata = MetaData()
 metadata.reflect(ENGINE)
 
-DEBUG_RESET_DATABASE_WHEN_STARTING = True
+DEBUG_RESET_DATABASE_WHEN_STARTING = False
 
 
 def get_db():
@@ -95,16 +95,24 @@ def root():
 
 
 if __name__ == "__main__":
+    if DEBUG_LOCAL_SWITCH:
+        print(
+            f"{colorama.Fore.GREEN}DATABASE: {colorama.Fore.WHITE}Connected to the Local Database."
+        )
+    else:
+        print(
+            f"{colorama.Fore.GREEN}DATABASE: {colorama.Fore.WHITE}Connected to the Azure Database."
+        )
     if DEBUG_RESET_DATABASE_WHEN_STARTING:
         print(
-            f"{colorama.Fore.GREEN}DEBUG: {colorama.Fore.WHITE}   Database reinitialized (if you don't want this set DEBUG_RESET_DATABASE_WHEN_STARTING to False)."
+            f"{colorama.Fore.GREEN}DATABASE: {colorama.Fore.WHITE}Database reinitialized (if you don't want this set DEBUG_RESET_DATABASE_WHEN_STARTING to False)."
         )
         for tbl in reversed(metadata.sorted_tables):
             tbl.drop(ENGINE)
             tbl.create(ENGINE)
         create_roles()
         print(
-            f"{colorama.Fore.GREEN}DETECTED: {colorama.Fore.WHITE} Database reset, created primary roles."
+            f"{colorama.Fore.GREEN}DATABASE: {colorama.Fore.WHITE}Database reset, created primary roles."
         )
 
     uvicorn.run(app="main:app", reload=True)

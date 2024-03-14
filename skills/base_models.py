@@ -6,4 +6,3 @@ class CreateSkillModel(BaseModel):
     skill_category: list[UUID]
     skill_name: str
     description: str
-    departments: list

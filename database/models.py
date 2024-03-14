@@ -16,6 +16,7 @@ from sqlalchemy import (
     INTEGER,
     DATE,
     UniqueConstraint,
+    BOOLEAN,
 )
 from sqlalchemy import DateTime
 
@@ -91,7 +92,7 @@ class User_Skills(Base):
     training_title = Column(String)
     training_description = Column(String)
     project_link = Column(String)
-
+    verified = Column(BOOLEAN)
     user = relationship("User", back_populates="skill_level")
 
 
