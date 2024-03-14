@@ -24,6 +24,14 @@ from skills import skill
 from project import projects
 from proposals import proposal
 from chatgpt_integration import gpt
+from sqlalchemy.schema import DropTable
+from sqlalchemy.ext.compiler import compiles
+
+
+@compiles(DropTable, "postgresql")
+def _compile_drop_table(element, compiler, **kwargs):
+    return compiler.visit_drop_table(element) + " CASCADE"
+
 
 app = FastAPI()
 metadata = MetaData()
