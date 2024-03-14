@@ -41,31 +41,18 @@ def create_role_in_project(
     Create a custom role.
     """
     action_user = db.query(User).filter_by(id=user["id"]).first()
-    project = db.query(Projects).filter_by(id=_body.project_id).first()
 
     if not "Organization Admin" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content="Only an Organization Admin is able to create custom roles.",
         )
-    if not project:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content="This project does not exist.",
-        )
 
-    if project.organization_id != action_user.organization_id:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content="You cannot create a custom role on a project from another organization.",
-        )
-
-    project.project_roles.append(
-        Custom_Roles(
-            custom_role_name=_body.role_name,
-            organization_id=action_user.organization_id,
-        )
+    new_role = Custom_Roles(
+        custom_role_name=_body.role_name,
+        organization_id=action_user.organization_id,
     )
+    db.add(new_role)
     db.commit()
 
 
@@ -156,3 +143,29 @@ def get_all_roles_from_user(user: UserDependency, db: DbDependency, _id: UUID):
             }
         )
     return JSONResponse(status_code=status.HTTP_200_OK, content=return_list)
+
+
+@router.get("/")
+def get_all_custom_roles(user: UserDependency, db: DbDependency):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    roles = (
+        db.query(Custom_Roles)
+        .filter_by(organization_id=str(action_user.organization_id))
+        .all()
+    )
+
+    if roles:
+        return JSONResponse(status_code=status.HTTP_200_OK, content=[roles])
+    return []
+
+
+@router.delete("/")
+def delete_custom_role(user: UserDependency, db: DbDependency, _id: UUID):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    if not "Organization Admin" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="Only an Organization admin can delete team roles.",
+        )
+    db.query(Custom_Roles).filter_by(id=_id).delete()
+    db.commit()

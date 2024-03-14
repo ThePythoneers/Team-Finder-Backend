@@ -271,7 +271,7 @@ def get_project_info(db: DbDependency, user: UserDependency, _id: str):
         "users": [{"id": str(i.id), "username:": i.username} for i in project.users],
         "project_roles": [i.custom_role_name for i in project.project_roles],
         "work_hours": project.work_hours,
-        "technology_stack": [i.tech_name for i in i.technologies],
+        "technology_stack": [i.tech_name for i in project.technologies],
         "deallocated_users": [
             {"id": str(i.id), "username:": i.username}
             for i in project.deallocated_users

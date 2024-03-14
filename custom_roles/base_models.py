@@ -8,7 +8,6 @@ from pydantic import BaseModel
 
 
 class CreateCustomRoleModel(BaseModel):
-    project_id: UUID
     role_name: str
 
 
