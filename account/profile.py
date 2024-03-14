@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from database.db import SESSIONLOCAL
-from database.models import Projects, Skill, User
+from database.models import Projects, Skill, User, Skill_Category
 from database.models import User_Skills
 
 from auth import authentication
@@ -22,13 +22,9 @@ router = APIRouter(tags={"User profile"}, prefix="/user")
 
 
 def get_db():
-    """
-    creates a db session
-    """
     try:
         db = SESSIONLOCAL()
         yield db
-        print("test")
     finally:
         db.close()
 
@@ -37,8 +33,8 @@ DbDependency = Annotated[Session, Depends(get_db)]
 UserDependency = Annotated[dict, Depends(authentication.get_current_user)]
 
 
-@router.get("/get/{user}")
-def get_user_info(db: DbDependency, auth: UserDependency, user: UUID):
+@router.get("/get/{user_id}")
+def get_user_info(db: DbDependency, auth: UserDependency, user_id: UUID):
     """
     Gets all user related info from an uuid.
     """
@@ -57,7 +53,7 @@ def get_user_info(db: DbDependency, auth: UserDependency, user: UUID):
             content="The UUID introduced is not valid.",
         )
 
-    user = db.query(User).filter(User.id == user).first()
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -74,12 +70,12 @@ def get_user_info(db: DbDependency, auth: UserDependency, user: UUID):
         )
 
     user_data = {
-        "name": user.username,
+        "username": user.username,
         "email": user.email,
-        "organization": user.organization.organization_name,
+        "organization_name": user.organization.organization_name,
         "address": user.organization.hq_address,
-        "primary_roles": [i.role_name for i in user.primary_roles],
-        "department": user.department,
+        "roles": [i.role_name for i in user.primary_roles],
+        "department_name": str(user.department.department_name),
         "work_hours": user.work_hours,
     }
     return JSONResponse(content=user_data, status_code=status.HTTP_200_OK)
@@ -92,21 +88,23 @@ def assign_skill_to_user(
     """
     Users can assign themselves skills including their level and experience.
     """
-    action_user = db.query(User).filter(id=auth["id"]).first()
+    action_user = db.query(User).filter_by(id=auth["id"]).first()
     # 1 – Learns, 2 – Knows, 3 – Does, 4 – Helps, 5 – Teaches
-    if not 1 < _body.level < 6:
+    if not 0 < _body.level < 6:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST, content="Invalid skill level."
         )
     # 1 - 0-6 months, 2 - 6-12 months, 3 - 1-2 years
     # 4 - 2-4 years, 5 - 4-7 years, 6 - >7 years
-    if not 1 < _body.experience < 7:
+    if not 0 < _body.experience < 7:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST, content="Invalid skill experience."
         )
 
-    user_skill = db.query(User_Skills).filter_by(
-        user_id=_body.user_id, skill_id=_body.skill_id
+    user_skill = (
+        db.query(User_Skills)
+        .filter_by(user_id=_body.user_id, skill_id=_body.skill_id)
+        .first()
     )
     if user_skill:
         return JSONResponse(
@@ -124,6 +122,8 @@ def assign_skill_to_user(
         project_link=_body.project_link,
     )
 
+    # ! TODO: new column verified true / false (false by default)
+
     db.add(create_user_skills_model)
     db.commit()
 
@@ -138,14 +138,19 @@ def get_skills_from_user(db: DbDependency, auth: UserDependency):
     return_list = []
 
     for i in action_user.skill_level:
+        skill = db.query(Skill).filter_by(id=i.skill_id).first()
         return_list.append(
             {
                 "skill_id": str(i.skill_id),
-                "skill_level": str(i.skill_level),
-                "skill_experience": str(i.skill_experience),
-                "training_title": str(i.training_title),
-                "training_description": str(i.training_description),
-                "project_link": str(i.project_link),
+                "skill_name": str(skill.skill_name),
+                "skill_category": [str(i) for i in skill.skill_category],
+                "skill_level": i.skill_level,
+                "skill_experience": i.skill_experience,
+                "training_title": str(i.training_title) if i.training_title else None,
+                "training_description": (
+                    str(i.training_description) if i.training_description else None
+                ),
+                "project_link": str(i.project_link) if i.project_link else None,
             }
         )
 
@@ -155,7 +160,7 @@ def get_skills_from_user(db: DbDependency, auth: UserDependency):
             status_code=status.HTTP_200_OK,
         )
 
-    return JSONResponse(content=action_user.skill_level, status_code=status.HTTP_200_OK)
+    return JSONResponse(content=return_list, status_code=status.HTTP_200_OK)
 
 
 @router.get("/skills/any")
@@ -181,14 +186,19 @@ def get_skills_from_any_user(db: DbDependency, auth: UserDependency, _id: UUID):
 
     return_list = []
     for i in victim_user.skill_level:
+        skill = db.query(Skill).filter_by(id=i.skill_id).first()
         return_list.append(
             {
                 "skill_id": str(i.skill_id),
-                "skill_level": str(i.skill_level),
-                "skill_experience": str(i.skill_experience),
-                "training_title": str(i.training_title),
-                "training_description": str(i.training_description),
-                "project_link": str(i.project_link),
+                "skill_name": str(skill.skill_name),
+                "skill_category": [str(i) for i in skill.skill_category],
+                "skill_level": i.skill_level,
+                "skill_experience": i.skill_experience,
+                "training_title": str(i.training_title) if i.training_title else None,
+                "training_description": (
+                    str(i.training_description) if i.training_description else None
+                ),
+                "project_link": str(i.project_link) if i.project_link else None,
             }
         )
 
@@ -198,7 +208,7 @@ def get_skills_from_any_user(db: DbDependency, auth: UserDependency, _id: UUID):
             status_code=status.HTTP_200_OK,
         )
 
-    return JSONResponse(content=victim_user.skill_level, status_code=status.HTTP_200_OK)
+    return JSONResponse(content=return_list, status_code=status.HTTP_200_OK)
 
 
 @router.delete("/skills")
@@ -217,17 +227,19 @@ def delete_skill_from_user(
             content="This Skill does not exist.",
         )
 
-    user_skill = db.query(User_Skills).filter_by(
-        user_id=_body.user_id, skill_id=_body.skill_id
+    user_skill = (
+        db.query(User_Skills)
+        .filter_by(user_id=_body.user_id, skill_id=_body.skill_id)
+        .first()
     )
 
-    if not user_skill.first():
+    if not user_skill:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content="You cannot delete a skill that is not assigned to yourself.",
         )
 
-    user_skill.delete()
+    db.delete(user_skill)
 
     db.commit()
 

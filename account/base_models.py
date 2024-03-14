@@ -25,9 +25,9 @@ class SkillsRequestModel(BaseModel):
     skill_id: UUID
     level: int
     experience: int
-    training_title: str
-    training_description: str
-    project_link: str
+    training_title: str = None
+    training_description: str = None
+    project_link: str = None
 
 
 class DeleteSkillModel(BaseModel):

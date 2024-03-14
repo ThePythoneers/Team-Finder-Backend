@@ -89,9 +89,13 @@ def get_department_info(db: DbDependency, user: UserDependency, _id: str):
         content={
             "department_id": str(department.id),
             "department_name": department.department_name,
-            "department_manager": department.department_manager,
+            "department_manager": (
+                str(department.department_manager)
+                if department.department_manager
+                else None
+            ),
             "organization_id": str(department.organization_id),
-            "department_users": department.department_users,
+            "department_users": [str(i.id) for i in department.department_users],
             "skills": department.skills,
             "created_at": str(department.created_at),
         },
@@ -243,12 +247,6 @@ def get_unassigned_departemnt_users(db: DbDependency, user: UserDependency):
 @router.get("/users/")
 def get_users_from_department(db: DbDependency, user: UserDependency):
     action_user = db.query(User).filter_by(id=user["id"]).first()
-    employees_db = (
-        db.query(Organization)
-        .filter_by(id=action_user.organization_id)
-        .first()
-        .employees
-    )
 
     if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
@@ -390,7 +388,10 @@ def get_departments(db: DbDependency, user: UserDependency):
                 ),
                 "manager_email": manager_email,
                 "department_users": [str(j.id) for j in i.department_users],
-                "skills": [j.skill_name for j in i.skills],
+                "skills": [
+                    {j.skill_name, j.skill_description, j.skill_category}
+                    for j in i.skills
+                ],
             }
         )
     return JSONResponse(status_code=status.HTTP_200_OK, content=return_departments)
