@@ -381,3 +381,6 @@ def get_projects_related_to_department(
     #         )
 
     return return_list
+
+
+# TODO add croles support

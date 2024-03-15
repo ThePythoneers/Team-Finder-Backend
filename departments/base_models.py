@@ -6,6 +6,10 @@ class CreateDepartmentModel(BaseModel):
     department_name: str
 
 
+class EditDepartmentModel(BaseModel):
+    department_name: str
+
+
 class DeleteDepartmentModel(BaseModel):
     department_id: UUID
 
@@ -21,3 +25,7 @@ class DeleteManagerModel(BaseModel):
 
 class AddUserToDepartmentModel(BaseModel):
     user_id: UUID
+
+
+class AddSkillsToDepartmentModel(BaseModel):
+    skill_id: list[UUID]

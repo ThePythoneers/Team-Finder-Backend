@@ -202,6 +202,7 @@ def login_for_access_token(
                     str(user.department_id) if user.department_id else None
                 ),
                 "work_hours": user.work_hours,
+                "skills": [{"skill_id": str(i.id)} for i in user.skill_level],
             },
         },
     )
@@ -234,6 +235,7 @@ def get_info_from_token(db: DbDependency, _token: str):
                     str(user.department_id) if user.department_id else None
                 ),
                 "work_hours": user.work_hours,
+                "skills": [{"skill_id": str(i.id)} for i in user.skill_level],
             },
         },
     )

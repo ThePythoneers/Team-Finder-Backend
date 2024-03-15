@@ -14,7 +14,7 @@ from database.models import (
 )
 from database.db import SESSIONLOCAL
 from auth import authentication
-from skills.base_models import CreateSkillModel
+from skills.base_models import CreateSkillModel, EditSkillCategoryModel
 
 
 router = APIRouter(prefix="/skill", tags={"Skills"})
@@ -118,12 +118,42 @@ def create_skill_category(db: DbDependency, user: UserDependency, name: str):
     )
 
 
-@router.delete("/category/{name}")
-def delete_skill_category(db: DbDependency, user: UserDependency, name: str):
+@router.patch("/category/{name}")
+def edit_skill_cateogry(
+    db: DbDependency, user: UserDependency, _body: EditSkillCategoryModel
+):
     action_user = db.query(User).filter_by(id=user["id"]).first()
-    name_check = db.query(Skill_Category).filter_by(category_name=name)
+    name_check = (
+        db.query(Skill_Category).filter_by(category_name=_body.category_name).first()
+    )
+    category = db.query(Skill_Category).filter_by(id=_body.category_id).first()
+    if name_check:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="This Skill Category already exists.",
+        )
 
-    if not name_check.first():
+    if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="Only a department manager can modify skill categories.",
+        )
+
+    category.category_name = _body.category_name
+
+    db.commit()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content="Skill category edited succesfully."
+    )
+
+
+@router.delete("/category/{name}")
+def delete_skill_category(db: DbDependency, user: UserDependency, _id: str):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    category = db.query(Skill_Category).filter_by(id=_id)
+
+    if not category.first():
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content="This Skill Category doesn't exist.",
@@ -135,7 +165,7 @@ def delete_skill_category(db: DbDependency, user: UserDependency, name: str):
             content="Only a department manager can modify skills.",
         )
 
-    name_check.delete()
+    category.delete()
 
     db.commit()
 
@@ -260,5 +290,5 @@ def verify_skill(db: DbDependency, user: UserDependency, _id: UUID):
     db.commit()
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=f"Skill {'un' if user_skill.verified else ''}verified",
+        content=f"Skill {'un' if not user_skill.verified else ''}verified",
     )

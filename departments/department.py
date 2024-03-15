@@ -6,14 +6,16 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from departments.base_models import (
+    AddSkillsToDepartmentModel,
     AddUserToDepartmentModel,
     AssignManagerModel,
     CreateDepartmentModel,
     DeleteDepartmentModel,
     DeleteManagerModel,
+    EditDepartmentModel,
 )
 from auth import authentication
-from database.models import Organization, User, Department
+from database.models import Organization, Skill, User, Department
 from database.db import SESSIONLOCAL
 
 router = APIRouter(prefix="/department", tags={"Department"})
@@ -100,6 +102,35 @@ def get_department_info(db: DbDependency, user: UserDependency, _id: str):
             "created_at": str(department.created_at),
         },
     )
+
+
+@router.patch("/")
+def edit_department(db: DbDependency, user: UserDependency, _body: EditDepartmentModel):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="Only an Department Manager can edit a Department.",
+        )
+
+    check_department = (
+        db.query(Department)
+        .filter_by(
+            department_name=_body.department_name,
+            organization_id=action_user.organization_id,
+        )
+        .first()
+    )
+
+    if check_department:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="A department with the same name already exists.",
+        )
+    action_user.department.department_name = _body.department_name
+
+    db.commit()
+    return JSONResponse(status_code=status.HTTP_200_OK, content="Edited succesfully.")
 
 
 @router.delete("/")
@@ -223,7 +254,7 @@ def delete_department_manager(
 
 
 @router.get("/unassigned/")
-def get_unassigned_departemnt_users(db: DbDependency, user: UserDependency):
+def get_unassigned_department_users(db: DbDependency, user: UserDependency):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     employees_db = (
         db.query(Organization)
@@ -389,9 +420,114 @@ def get_departments(db: DbDependency, user: UserDependency):
                 "manager_email": manager_email,
                 "department_users": [str(j.id) for j in i.department_users],
                 "skills": [
-                    {j.skill_name, j.skill_description, j.skill_category}
+                    {
+                        "skill_name": j.skill_name,
+                        "skill_description": j.skill_description,
+                        "skill_category": str([str(k) for k in j.skill_category]),
+                    }
                     for j in i.skills
                 ],
             }
         )
     return JSONResponse(status_code=status.HTTP_200_OK, content=return_departments)
+
+
+@router.get("/skills")
+def get_skills_from_department(db: DbDependency, user: UserDependency):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+
+    if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You are not a department manager.",
+        )
+
+    if not action_user.department_id:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You are not managing any departments yet.",
+        )
+
+    skills = [
+        {
+            "id": str(i.id),
+            "skill_name": i.skill_name,
+            "skill_category": [str(j) for j in i.skill_category],
+            "skill_description": i.skill_description,
+            "author": str(i.author),
+            "users": [
+                {
+                    "user_id": str(j.user_id),
+                    "id": str(j.id),
+                    "skill_level": j.skill_level,
+                    "skill_experinece": j.skill_experience,
+                    "training_title": j.training_title or None,
+                    "training_description": j.training_description or None,
+                    "project_link": j.project_link or None,
+                    "verified": str(j.verified),
+                }
+                for j in i.user_level
+            ],
+        }
+        for i in action_user.department.skills
+    ]
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=skills)
+
+
+@router.post("/skills")
+def add_skills_to_department(
+    db: DbDependency, user: UserDependency, _body: AddSkillsToDepartmentModel
+):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+
+    if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You are not a department manager.",
+        )
+
+    if not action_user.department_id:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You are not managing any departments yet.",
+        )
+    for i in _body.skill_id:
+        skill = db.query(Skill).filter_by(id=i).first()
+        if skill in action_user.department.skills:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content="One or more skills are already in this department and cannot be assigned again.",
+            )
+        action_user.department.skills.append(skill)
+
+    db.commit()
+
+
+@router.delete("/skills")
+def remove_skills_from_department(
+    db: DbDependency, user: UserDependency, _body: AddSkillsToDepartmentModel
+):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+
+    if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You are not a department manager.",
+        )
+
+    if not action_user.department_id:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You are not managing any departments yet.",
+        )
+    for i in _body.skill_id:
+        skill = db.query(Skill).filter_by(id=i).first()
+        if not skill in action_user.department.skills:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content="One or more skills are not in this department and cannot be deleted.",
+            )
+        action_user.department.skills.remove(skill)
+
+    db.commit()

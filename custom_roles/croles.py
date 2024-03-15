@@ -13,7 +13,11 @@ from sqlalchemy.orm import Session
 
 from database.db import SESSIONLOCAL
 from database.models import Custom_Roles, User, Projects, Users_Custom_Roles
-from custom_roles.base_models import AssignCustomRoleModel, CreateCustomRoleModel
+from custom_roles.base_models import (
+    AssignCustomRoleModel,
+    CreateCustomRoleModel,
+    EditCustomRoleModel,
+)
 from auth import authentication
 
 router = APIRouter(tags={"Custom Roles"}, prefix="/roles/custom")
@@ -35,9 +39,7 @@ UserDependency = Annotated[dict, Depends(authentication.get_current_user)]
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-def create_role_in_project(
-    user: UserDependency, db: DbDependency, _body: CreateCustomRoleModel
-):
+def create_role(user: UserDependency, db: DbDependency, _body: CreateCustomRoleModel):
     """
     Create a custom role.
     """
@@ -55,6 +57,10 @@ def create_role_in_project(
     )
     db.add(new_role)
     db.commit()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content="Role created succesfully."
+    )
 
 
 @router.post("/user")
@@ -155,8 +161,25 @@ def get_all_custom_roles(user: UserDependency, db: DbDependency):
         .all()
     )
     if roles:
-        return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_encoder(roles))
+        return JSONResponse(
+            status_code=status.HTTP_200_OK, content=jsonable_encoder(roles)
+        )
     return []
+
+
+@router.patch("/")
+def edit_custom_role(
+    db: DbDependency, user: UserDependency, _body: EditCustomRoleModel
+):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    if not "Organization Admin" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="Only an Organization admin can edit team roles.",
+        )
+    role = db.query(Custom_Roles).filter_by(id=_body.role_id).first()
+    role.custom_role_name = _body.role_name
+    db.commit()
 
 
 @router.delete("/")

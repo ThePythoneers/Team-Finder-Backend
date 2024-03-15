@@ -15,3 +15,8 @@ class AssignCustomRoleModel(BaseModel):
     project_id: UUID
     role_id: UUID
     user_id: UUID
+
+
+class EditCustomRoleModel(BaseModel):
+    role_id: UUID
+    role_name: str
