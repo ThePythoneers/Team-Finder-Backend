@@ -24,6 +24,9 @@ from skills import skill
 from project import projects
 from proposals import proposal
 from chatgpt_integration import gpt
+from technology_stack import technology
+from debug import debugging
+
 from sqlalchemy.schema import DropTable
 from sqlalchemy.ext.compiler import compiles
 
@@ -38,6 +41,7 @@ metadata = MetaData()
 metadata.reflect(ENGINE)
 
 DEBUG_RESET_DATABASE_WHEN_STARTING = False
+DEBUG_HELPFUL_ENDPOINTS = True
 
 
 def get_db():
@@ -71,6 +75,11 @@ app.include_router(skill.router)
 app.include_router(projects.router)
 app.include_router(proposal.router)
 app.include_router(gpt.router)
+app.include_router(technology.router)
+
+if DEBUG_HELPFUL_ENDPOINTS:
+    print(f"{colorama.Fore.GREEN}DEBUG: {colorama.Fore.WHITE}   Included DEBUG router.")
+    app.include_router(debugging.router)
 
 
 @app.exception_handler(RequestValidationError)

@@ -77,7 +77,7 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
             status_code=status.HTTP_400_BAD_REQUEST,
             content="The deadline cannot be assigned before the start of the project.",
         )
-    if _body.work_hours < 0 or _body.work_hours > 8:
+    if _body.work_hours <= 0 or _body.work_hours > 8:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content="Work hours needs to be a value between 1 and 8",
@@ -93,12 +93,6 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
         organization_id=action_user.organization_id,
     )
 
-    for i in _body.technology_stack:
-        create_tech_model = TechnologyStack(
-            tech_name=i, organization_id=action_user.organization_id
-        )
-        create_project_model.technologies.append(create_tech_model)
-    print("test")
     db.add(create_project_model)
     db.commit()
 
@@ -191,10 +185,17 @@ def delete_project(db: DbDependency, user: UserDependency, _id: UUID):
             status_code=400, content="Only a Project Manager can create a new project."
         )
 
-    # TODO create_project_model.project_roles.append(_body.team_roles)
-
+    if not project.first():
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="This project has already been deleted or it does not exist.",
+        )
     project.delete()
     db.commit()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content="Project deleted succesfully."
+    )
 
 
 @router.post("/assign")
@@ -288,7 +289,9 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
         db.query(Projects).filter_by(organization_id=action_user.organization_id).all()
     )
     if not projects:
-        return JSONResponse(status_code=404, content="Internal error.")
+        return JSONResponse(
+            status_code=404, content="This organization does not have any projects yet."
+        )
     project_list = []
     for i in projects:
         project_list.append(
@@ -303,7 +306,10 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
                 "users": [{"id": str(i.id), "username:": i.username} for i in i.users],
                 "project_roles": [i.custom_role_name for i in i.project_roles],
                 "work_hours": i.work_hours,
-                "technology_stack": [i.tech_name for i in i.technologies],
+                "technology_stack": [
+                    {"technology_name": i.tech_name, "id": str(i.id)}
+                    for i in i.technologies
+                ],
                 "deallocated_users": [
                     {"id": str(j.id), "username:": j.username}
                     for j in i.deallocated_users
