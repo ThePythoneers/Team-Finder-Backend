@@ -47,11 +47,11 @@ def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel
 
     department = db.query(Department).filter_by(id=action_user.department_id).first()
 
-    if not department:
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content="You are not the manager of any department.",
-        )
+    # if not department:
+    #     return JSONResponse(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         content="You are not the manager of any department.",
+    #     )
     create_skill_model = Skill(
         skill_name=_body.skill_name,
         skill_description=_body.description,
@@ -59,7 +59,8 @@ def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel
         author=action_user.id,
     )
 
-    create_skill_model.departments.append(department)
+    if department:
+        create_skill_model.departments.append(department)
     create_skill_model.skill_category = _body.skill_category
 
     db.add(create_skill_model)
@@ -196,17 +197,10 @@ def get_skill_categories(db: DbDependency, user: UserDependency):
 
 @router.get("/category/{_id}")
 def get_skill_category_by_id(db: DbDependency, user: UserDependency, _id: str):
-    categories = db.query(Skill_Category).filter_by(id=_id).first()
-    return_list = []
-    for i in categories:
-        return_list.append(
-            {
-                "id": i.id,
-                "category_name": i.category_name,
-                "organization_id": i.organization_id,
-            }
-        )
-    return return_list
+    category = db.query(Skill_Category).filter_by(id=_id).first()
+    if not category:
+        return []
+    return category
 
 
 @router.get("/")

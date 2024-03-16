@@ -51,6 +51,21 @@ def create_role(user: UserDependency, db: DbDependency, _body: CreateCustomRoleM
             content="Only an Organization Admin is able to create custom roles.",
         )
 
+    check_duplicate = (
+        db.query(Custom_Roles)
+        .filter_by(
+            custom_role_name=_body.role_name,
+            organization_id=str(action_user.organization_id),
+        )
+        .first()
+    )
+
+    if check_duplicate:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="A custom team role with the same name already exists.",
+        )
+
     new_role = Custom_Roles(
         custom_role_name=_body.role_name,
         organization_id=action_user.organization_id,

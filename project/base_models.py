@@ -1,5 +1,5 @@
 from typing import Optional
-from datetime import date
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -8,19 +8,22 @@ from pydantic import BaseModel
 class CreateProjectModel(BaseModel):
     project_name: str
     project_period: str
-    start_date: date
-    deadline_date: Optional[date] = None
+    start_date: datetime
+    deadline_date: Optional[datetime] = None
     project_status: str
+    technologies: list[str]
     general_description: str
-    work_hours: int
+    team_roles: list[str]
+
+    # work_hours: int
 
 
 class UpdateProjectModel(BaseModel):
     project_id: UUID
     project_name: Optional[str] = None
     project_period: Optional[str] = None
-    start_date: Optional[date] = None
-    deadline_date: Optional[date] = None
+    start_date: Optional[datetime] = None
+    deadline_date: Optional[datetime] = None
     project_status: Optional[str] = None
     general_description: Optional[str] = None
     team_roles: Optional[str] = None
@@ -30,7 +33,7 @@ class UpdateProjectModel(BaseModel):
 class GetAvailableEmployeesModel(BaseModel):
     partially_available: bool
     close_to_finish: bool
-    deadline: Optional[int] = None
+    deadline: Optional[datetime] = None
     unavailable: bool
 
 

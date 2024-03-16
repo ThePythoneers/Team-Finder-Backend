@@ -6,4 +6,11 @@ from pydantic import BaseModel
 class CreateAllocationProposal(BaseModel):
     project_id_allocation: UUID
     user_id: UUID
-    comment: str
+    work_hours: int
+    team_roles: list[UUID]
+    comments: str
+
+class CreateDeAllocationProposal(BaseModel):
+    project_id_allocation: UUID
+    user_id: UUID
+    comments: str

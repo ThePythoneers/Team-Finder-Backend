@@ -154,15 +154,17 @@ def get_all_technology_stacks(user: UserDependency, db: DbDependency):
         .filter_by(organization_id=str(action_user.organization_id))
         .all()
     )
-    if not technologies:
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content="There aren't any technology stacks in this organization yet.",
-        )
+    # if not technologies:
+    #     return JSONResponse(
+    #         status_code=status.HTTP_404_NOT_FOUND,
+    #         content="There aren't any technology stacks in this organization yet.",
+    #     )
     return_list = [
         {"id": str(i.id), "technology_name": i.tech_name} for i in technologies
     ]
-    return JSONResponse(status_code=status.HTTP_200_OK, content=return_list)
+    if return_list:
+        return JSONResponse(status_code=status.HTTP_200_OK, content=return_list)
+    return []
 
 
 @router.delete("/")

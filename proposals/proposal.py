@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from auth import authentication
 from database.models import AllocationProposal, DeallocationProposal, Projects, User
 from database.db import SESSIONLOCAL
-from proposals.base_models import CreateAllocationProposal
+from proposals.base_models import CreateAllocationProposal, CreateDeAllocationProposal
 
 router = APIRouter(prefix="/proposal", tags={"Proposals"})
 
@@ -36,22 +36,23 @@ def create_allocation_proposal(
     create_proposal_model = AllocationProposal(
         project_id_allocation=_body.project_id_allocation,
         user_id=_body.user_id,
-        comments=_body.comment,
+        work_hours=_body.work_hours,
+        team_roles=_body.team_roles,
+        comments=_body.comments,
     )
 
     db.add(create_proposal_model)
-
     db.commit()
 
 
 @router.post("/deallocation")
 def create_deallocation_proposal(
-    db: DbDependency, user: UserDependency, _body: CreateAllocationProposal
+    db: DbDependency, user: UserDependency, _body: CreateDeAllocationProposal
 ):
     create_proposal_model = DeallocationProposal(
         project_id_deallocation=_body.project_id_allocation,
         user_id=_body.user_id,
-        reason=_body.comment,
+        reason=_body.comments,
     )
 
     db.add(create_proposal_model)
@@ -79,15 +80,13 @@ def get_deallocation_proposal_from_user(
 
 @router.post("/allocation/accept")
 def accept_allocation_proposal(db: DbDependency, user: UserDependency, _id: UUID):
-    proposal = db.query(AllocationProposal).filter_by(id=_id)
+    proposal = db.query(AllocationProposal).filter_by(id=_id).first()
 
     # WIP, same as @assign_user_to_project
-    project = (
-        db.query(Projects).filter_by(id=proposal.first().project_id_allocation).first()
-    )
-    victim_user = db.query(User).filter_by(id=proposal.first().user_id).first()
+    project = db.query(Projects).filter_by(id=proposal.project_id_allocation).first()
+    victim_user = db.query(User).filter_by(id=proposal.user_id).first()
     project.users.append(victim_user)
-    victim_user.work_hours += project.work_hours
+    victim_user.work_hours += proposal.work_hours
     proposal.delete()
     db.commit()
 
@@ -100,17 +99,23 @@ def reject_allocation_proposal(db: DbDependency, user: UserDependency, _id: UUID
 
 @router.post("/deallocation/accept")
 def accept_deallocation_proposal(db: DbDependency, user: UserDependency, _id: UUID):
-    proposal = db.query(DeallocationProposal).filter_by(id=_id)
+    action_user = db.query(User).filter_by(id=user["id"]).first()
 
-    # WIP, same as @assign_user_to_project
-    project = (
-        db.query(Projects)
-        .filter_by(id=proposal.first().project_id_deallocation)
+    proposal = db.query(DeallocationProposal).filter_by(id=_id).first()
+    allocate_proposal = (
+        db.query(AllocationProposal)
+        .filter_by(
+            user_id=action_user.id,
+            project_id_allocation=proposal.project_id_deallocation,
+        )
         .first()
     )
+
+    # WIP, same as @assign_user_to_project
+    project = db.query(Projects).filter_by(id=proposal.project_id_deallocation).first()
     victim_user = db.query(User).filter_by(id=proposal.first().user_id).first()
     project.users.remove(victim_user)
-    victim_user.work_hours -= project.work_hours
+    victim_user.work_hours -= allocate_proposal.work_hours
     project.deallocated_users.append(victim_user)
     proposal.delete()
     db.commit()

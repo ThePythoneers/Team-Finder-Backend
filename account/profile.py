@@ -205,10 +205,11 @@ def get_skills_from_any_user(db: DbDependency, auth: UserDependency, _id: UUID):
         )
 
     if not return_list:
-        return JSONResponse(
-            content="This user doesn't have any skills assigned",
-            status_code=status.HTTP_200_OK,
-        )
+        return []
+        # return JSONResponse(
+        #     content="This user doesn't have any skills assigned",
+        #     status_code=status.HTTP_200_OK,
+        # )
 
     return JSONResponse(content=return_list, status_code=status.HTTP_200_OK)
 

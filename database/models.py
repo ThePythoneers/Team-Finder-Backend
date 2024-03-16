@@ -92,7 +92,7 @@ class User_Skills(Base):
     training_title = Column(String)
     training_description = Column(String)
     project_link = Column(String)
-    verified = Column(BOOLEAN)
+    verified = Column(BOOLEAN, default=False)
     user = relationship("User", back_populates="skill_level")
 
 
@@ -254,7 +254,7 @@ class Projects(Base):
     deallocated_users = relationship(
         "User", secondary=dealloc_user_projects, backref="past_projects"
     )
-    work_hours = Column(INTEGER, nullable=False)
+    # work_hours = Column(INTEGER, nullable=False)
     technologies = relationship(
         "TechnologyStack", secondary=project_technology, back_populates="projects"
     )
@@ -267,6 +267,8 @@ class AllocationProposal(Base):
         UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
     )
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    work_hours = Column(INTEGER)
+    team_roles = Column(ARRAY(UUID))
     comments = Column(String)
 
 
