@@ -13,16 +13,12 @@ try:
     payload ={
         "detail": [
             {
-            "loc": [
-                "string",
-                0
-            ],
-            "msg": "string",
-            "type": "string"
+                "loc": "string",
+                "msg": "string",
+                "type": "string"
             }
         ]
     }
-
     headers = {
         "accept": "application/json",
         "Content-Type": "application/json"
@@ -31,15 +27,12 @@ try:
     response = requests.post("http://127.0.0.1:8000/organization/", json=payload, headers=headers)
 
     response_json = response.json()
-
     assert response.status_code == 200
     assert "organization_info" in response_json
-
     print("Get Organization Info test passed!")
 
 except AssertionError:
     print("Get Organization Info test failed!")
-
 
 finally:
     driver.quit()
