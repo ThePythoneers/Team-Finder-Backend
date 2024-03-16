@@ -18,6 +18,7 @@ from database.models import (
 )
 from database.db import SESSIONLOCAL
 from project.base_models import (
+    AddCustomRoleToProjectModel,
     AssignUserModel,
     CreateProjectModel,
     GetAvailableEmployeesModel,
@@ -91,6 +92,7 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
         deadline_date=_body.deadline_date,
         work_hours=_body.work_hours,
         organization_id=action_user.organization_id,
+        project_manager=action_user.id,
     )
 
     db.add(create_project_model)
@@ -103,11 +105,17 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
     Update an existing project, all fields are optional except project_id.
     """
     action_user = db.query(User).filter_by(id=user["id"]).first()
-    project_id = db.query(Projects).filter_by(id=_body.project_id)
+    project_id = db.query(Projects).filter_by(id=_body.id).first()
 
     if "Project Manager" not in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
             status_code=400, content="Only a Project Manager can update a new project."
+        )
+
+    if _body.project_period == "Fixed" and _body.project_period == "Ongoing":
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="Project period must be Fixed or Ongoing.",
         )
 
     if _body.project_period == "Fixed" and not _body.deadline_date:
@@ -134,38 +142,14 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content="Work hours needs to be a value between 1 and 8",
             )
-    update_dict = {}
 
-    if _body.project_name:
-        update_dict["project_name"] = _body.project_name
-    if _body.project_period:
-        update_dict["project_period"] = _body.project_period
-    if _body.start_date:
-        update_dict["start_date"] = _body.start_date
-    if _body.deadline_date:
-        update_dict["deadline_date"] = _body.deadline_date
-    if _body.project_status:
-        update_dict["project_status"] = _body.project_status
-    if _body.general_description:
-        update_dict["description"] = _body.general_description
-    if _body.technology_stack:
-        for i in _body.technology_stack:
-            create_tech_model = TechnologyStack(
-                tech_name=i, organization_id=action_user.organization_id
-            )
-            tech = project_id.first()  # Garbage collection bug
-            tech.technologies.append(create_tech_model)
-    if _body.work_hours:
-        update_dict["work_hours"] = _body.work_hours
-        for i in project_id.first().users:
-            i.work_hours += _body.work_hours - project_id.first().work_hours
-    if _body.team_roles:
-        for i in _body.technology_stack:
-            custom_role = db.query(Custom_Roles).filter_by(i.id).first()
-            tech = project_id.first()  # Garbage collection bug
-            tech.project_roles.append(custom_role)
-    print(_body)
-    project_id.update(update_dict)
+    project_id.project_name = _body.project_name
+    project_id.project_period = _body.project_period
+    project_id.start_date = _body.start_date
+    project_id.deadline_date = _body.deadline_date
+    project_id.project_status = _body.project_status
+    project_id.description = _body.description
+    project_id.work_hours = _body.work_hours
 
     db.commit()
 
@@ -277,6 +261,7 @@ def get_project_info(db: DbDependency, user: UserDependency, _id: str):
             {"id": str(i.id), "username:": i.username}
             for i in project.deallocated_users
         ],
+        "project_manager": str(project.project_manager),
     }
 
     return JSONResponse(status_code=200, content=project_dict)
@@ -314,6 +299,7 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
                     {"id": str(j.id), "username:": j.username}
                     for j in i.deallocated_users
                 ],
+                "project_manager": str(i.project_manager),
             }
         )
 
@@ -383,4 +369,64 @@ def get_projects_related_to_department(
     return return_list
 
 
-# TODO add croles support
+@router.post("/roles")
+def add_custom_role_to_project(
+    db: DbDependency, user: UserDependency, _body: AddCustomRoleToProjectModel
+):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    project = db.query(Projects).filter_by(project_manager=action_user.id).first()
+    role_to_add = db.query(Custom_Roles).filter_by(id=_body.role_id).first()
+
+    if not project:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="You are not managing any projects.",
+        )
+    if not role_to_add:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="The role selected does not exist.",
+        )
+    if role_to_add in project.project_roles:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="Cannot assign an already assigned role.",
+        )
+    project.project_roles.append(role_to_add)
+
+    db.commit()
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content="Custom Role added succesfully."
+    )
+
+
+@router.delete("/roles")
+def delete_custom_role_from_project(
+    db: DbDependency, user: UserDependency, _body: AddCustomRoleToProjectModel
+):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    project = db.query(Projects).filter_by(project_manager=action_user.id).first()
+    role_to_delete = db.query(Custom_Roles).filter_by(id=_body.role_id).first()
+
+    if not project:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="You are not managing any projects.",
+        )
+    if not role_to_delete:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="The role selected does not exist.",
+        )
+
+    if not role_to_delete in project.project_roles:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="Cannot find this role in this project.",
+        )
+    project.project_roles.remove(role_to_delete)
+
+    db.commit()
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content="Custom Role deleted succesfully."
+    )

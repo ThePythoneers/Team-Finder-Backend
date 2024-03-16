@@ -16,15 +16,14 @@ class CreateProjectModel(BaseModel):
 
 
 class UpdateProjectModel(BaseModel):
-    project_id: UUID
-    project_name: Optional[str] = None
-    project_period: Optional[str] = None
-    start_date: Optional[date] = None
+    id: UUID
+    project_name: str
+    project_period: str
+    start_date: date
     deadline_date: Optional[date] = None
-    project_status: Optional[str] = None
-    general_description: Optional[str] = None
-    team_roles: Optional[str] = None
-    work_hours: Optional[int] = None
+    project_status: str
+    description: str
+    work_hours: int
 
 
 class GetAvailableEmployeesModel(BaseModel):
@@ -35,5 +34,9 @@ class GetAvailableEmployeesModel(BaseModel):
 
 
 class AssignUserModel(BaseModel):
-    user_id: str
-    project_id: str
+    user_id: UUID
+    project_id: UUID
+
+
+class AddCustomRoleToProjectModel(BaseModel):
+    role_id: UUID

@@ -40,7 +40,7 @@ app = FastAPI()
 metadata = MetaData()
 metadata.reflect(ENGINE)
 
-DEBUG_RESET_DATABASE_WHEN_STARTING = False
+DEBUG_RESET_DATABASE_WHEN_STARTING = True
 DEBUG_HELPFUL_ENDPOINTS = True
 
 
@@ -82,17 +82,17 @@ if DEBUG_HELPFUL_ENDPOINTS:
     app.include_router(debugging.router)
 
 
-@app.exception_handler(RequestValidationError)
-# pylint: disable=unused-argument
-def validation_exception_handler(request: Request, error: RequestValidationError):
-    """
-    In case of an empty field in a pydantic BaseModel, we don't return the whole
-    message.
-    """
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content="empty non-null field or bad request",
-    )
+# @app.exception_handler(RequestValidationError)
+# # pylint: disable=unused-argument
+# def validation_exception_handler(request: Request, error: RequestValidationError):
+#     """
+#     In case of an empty field in a pydantic BaseModel, we don't return the whole
+#     message.
+#     """
+#     return JSONResponse(
+#         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+#         content="empty non-null field or bad request",
+#     )
 
 
 @app.get("/")
