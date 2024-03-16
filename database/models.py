@@ -258,6 +258,7 @@ class Projects(Base):
     technologies = relationship(
         "TechnologyStack", secondary=project_technology, back_populates="projects"
     )
+    project_manager = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
 
 
 class AllocationProposal(Base):
