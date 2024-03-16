@@ -31,5 +31,4 @@ try:
     print("Organization registration test passed!")
 
 finally:
-    # Close the browser
     driver.quit()
