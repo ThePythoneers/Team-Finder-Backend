@@ -1,10 +1,11 @@
 from dotenv import dotenv_values
 from openai import OpenAI
 import json
+import os
 
 env = dotenv_values(".env")
 
-API_KEY = env["CHATGPT_API_KEY"]
+API_KEY = os.environ.get("CHATGPT_API_KEY")
 
 GPT_MODEL = "gpt-3.5-turbo-1106"
 client = OpenAI(api_key=API_KEY)

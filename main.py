@@ -96,6 +96,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 def root():
     """
@@ -125,4 +126,4 @@ if __name__ == "__main__":
             f"{colorama.Fore.GREEN}DATABASE: {colorama.Fore.WHITE}Database reset, created primary roles."
         )
 
-    uvicorn.run(app="main:app", reload=True)
+    uvicorn.run(app="main:app", host="0.0.0.0", port=8000, reload=True)
