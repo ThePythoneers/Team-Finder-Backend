@@ -5,35 +5,50 @@ pool: 'default'
 variables:
   python.version: '3.12'
   projectRoot: '.'
+jobs:
+  - job: deploy
+    variables:
+      - group: 'BE_VARIABLES'
+    steps:
+      - task: UsePythonVersion@0
+        displayName: 'Use Python $(python.version)'
+        inputs:
+          versionSpec: '$(python.version)'
 
-steps:
-  - task: UsePythonVersion@0
-    displayName: 'Use Python $(python.version)'
-    inputs:
-      versionSpec: '$(python.version)'
+      - script: |
+          echo "ALGORITHM=$(ALGORITHM)" >> .env
+          echo "AZURE_SQL_DATABASE_NAME=$(AZURE_SQL_DATABASE_NAME)" >> .env
+          echo "AZURE_SQL_HOSTNAME=$(AZURE_SQL_HOSTNAME)" >> .env
+          echo "AZURE_SQL_PASSWORD=$(AZURE_SQL_PASSWORD)" >> .env
+          echo "AZURE_SQL_USERNAME=$(AZURE_SQL_USERNAME)" >> .env
+          echo "CHATGPT_API_KEY=$(CHATGPT_API_KEY)" >> .env
+          echo "SECRET_KEY=$(SECRET_KEY)" >> .env
+          echo "TOKEN_EXPIRATION_MINUTES=$(TOKEN_EXPIRATION_MINUTES)" >> .env
+        workingDirectory: $(projectRoot)
+        displayName: "Create env file"
 
-  - script: |
-      python3.12 -m pip install --upgrade pip
-      pip3.12 install setup
-      pip3.12 install --target="./.python_packages/lib/site-packages" -r ./requirements.txt
-    workingDirectory: $(projectRoot)
-    displayName: "Install requirements"
-  
-  - task: ArchiveFiles@2
-    displayName: 'Archive files'
-    inputs:
-      rootFolderOrFile: '$(projectRoot)'
-      includeRootFolder: false
-      archiveType: zip
-      archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
-      replaceExistingArchive: true
-  
-  - task: AzureWebApp@1
-    displayName: 'Deploy Azure Web App'
-    inputs:
-      azureSubscription: 'the-pythoneers-service-connection'
-      appType: 'webAppLinux'
-      appName: "atc-2024-thepythoneers-be-linux-web-app"
-      runtimeStack: 'PYTHON|3.12'
-      package: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
-      startUpCommand: 'uvicorn main:app --reload --host 0.0.0.0'
+      - script: |
+          python3.12 -m pip install --upgrade pip
+          pip3.12 install setup
+          pip3.12 install --target="./.python_packages/lib/site-packages" -r ./requirements.txt
+        workingDirectory: $(projectRoot)
+        displayName: "Install requirements"
+      
+      - task: ArchiveFiles@2
+        displayName: 'Archive files'
+        inputs:
+          rootFolderOrFile: '$(projectRoot)'
+          includeRootFolder: false
+          archiveType: zip
+          archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+          replaceExistingArchive: true
+      
+      - task: AzureWebApp@1
+        displayName: 'Deploy Azure Web App'
+        inputs:
+          azureSubscription: 'the-pythoneers-service-connection'
+          appType: 'webAppLinux'
+          appName: "atc-2024-thepythoneers-be-linux-web-app"
+          runtimeStack: 'PYTHON|3.12'
+          package: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+          startUpCommand: 'uvicorn main:app --reload --host 0.0.0.0'

@@ -6,7 +6,7 @@ from colorama import Fore
 
 env = dotenv_values(".env")
 
-DEBUG_LOCAL_SWITCH = True
+DEBUG_LOCAL_SWITCH = False
 
 if DEBUG_LOCAL_SWITCH:
     SQL_USERNAME = env["LOCAL_SQL_USERNAME"]
