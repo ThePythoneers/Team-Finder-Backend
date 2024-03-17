@@ -149,7 +149,7 @@ def edit_skill_cateogry(
     )
 
 
-@router.delete("/category/{name}")
+@router.delete("/category/{_id}")
 def delete_skill_category(db: DbDependency, user: UserDependency, _id: str):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     category = db.query(Skill_Category).filter_by(id=_id)

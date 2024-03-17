@@ -126,8 +126,10 @@ def get_employees_from_organization(db: DbDependency, user: UserDependecy):
                 "id": str(j.id),
                 "username": j.username,
                 "email": j.email,
-                "roles": [i.role_name for i in j.primary_roles],
+                "primary_roles": [i.role_name for i in j.primary_roles],
                 "department_id": str(j.department_id) if j.department_id else None,
+                "organization_id": str(j.organization_id),
+                "work_hours": 0,
             }
         )
 

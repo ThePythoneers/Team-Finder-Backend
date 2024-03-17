@@ -98,7 +98,7 @@ def get_department_info(db: DbDependency, user: UserDependency, _id: str):
             ),
             "organization_id": str(department.organization_id),
             "department_users": [str(i.id) for i in department.department_users],
-            "skills": department.skills,
+            "skills": [str(i.id) for i in department.skills] if department.skills else None,
             "created_at": str(department.created_at),
         },
     )
@@ -303,7 +303,7 @@ def get_users_from_department(db: DbDependency, user: UserDependency):
 
     for i, j in zip(dict_employees, assigned_employees):
         i.pop("hashed_password")
-        i["roles"] = [x.role_name for x in j.primary_roles]
+        i["primary_roles"] = [x.role_name for x in j.primary_roles]
 
     return assigned_employees
 
@@ -423,7 +423,7 @@ def get_departments(db: DbDependency, user: UserDependency):
                     {
                         "skill_name": j.skill_name,
                         "skill_description": j.skill_description,
-                        "skill_category": str([str(k) for k in j.skill_category]),
+                        "skill_category": [str(k) for k in j.skill_category],
                     }
                     for j in i.skills
                 ],

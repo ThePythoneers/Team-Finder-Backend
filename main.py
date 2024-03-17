@@ -57,13 +57,6 @@ def get_db():
 
 models.Base.metadata.create_all(bind=ENGINE)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 app.include_router(authentication.router)
 app.include_router(profile.router)
@@ -94,6 +87,14 @@ if DEBUG_HELPFUL_ENDPOINTS:
 #         content="empty non-null field or bad request",
 #     )
 
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():

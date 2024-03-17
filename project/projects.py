@@ -99,7 +99,7 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
         create_project_model.technologies.append(
             db.query(TechnologyStack).filter_by(id=tech).first()
         )
-    for role in _body.team_roles:
+    for role in _body.project_roles:
         create_project_model.project_roles.append(
             db.query(Custom_Roles).filter_by(id=role).first()
         )
@@ -160,7 +160,7 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
     project_id.deadline_date = _body.deadline_date
     project_id.project_status = _body.project_status
     project_id.description = _body.description
-    project_id.work_hours = _body.work_hours
+    # project_id.work_hours = _body.work_hours
 
     db.commit()
 
@@ -276,7 +276,9 @@ def get_project_info(db: DbDependency, user: UserDependency, _id: str):
             {"id": str(i.id), "username:": i.username}
             for i in project.deallocated_users
         ],
-        "project_manager": str(project.project_manager),
+        "project_manager": (
+            str(project.project_manager) if project.project_manager else None
+        ),
     }
 
     return JSONResponse(status_code=200, content=project_dict)
@@ -326,7 +328,9 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
                     {"id": str(j.id), "username:": j.username}
                     for j in i.deallocated_users
                 ],
-                "project_manager": str(i.project_manager),
+                "project_manager": (
+                    str(i.project_manager) if i.project_manager else None
+                ),
             }
         )
 
