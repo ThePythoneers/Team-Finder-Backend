@@ -26,6 +26,7 @@ from proposals import proposal
 from chatgpt_integration import gpt
 from technology_stack import technology
 from debug import debugging
+from notifications import notification
 
 from sqlalchemy.schema import DropTable
 from sqlalchemy.ext.compiler import compiles
@@ -57,6 +58,14 @@ def get_db():
 
 models.Base.metadata.create_all(bind=ENGINE)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
 
 app.include_router(authentication.router)
 app.include_router(profile.router)
@@ -69,32 +78,24 @@ app.include_router(projects.router)
 app.include_router(proposal.router)
 app.include_router(gpt.router)
 app.include_router(technology.router)
+app.include_router(notification.router)
 
 if DEBUG_HELPFUL_ENDPOINTS:
     print(f"{colorama.Fore.GREEN}DEBUG: {colorama.Fore.WHITE}   Included DEBUG router.")
     app.include_router(debugging.router)
 
 
-# @app.exception_handler(RequestValidationError)
-# # pylint: disable=unused-argument
-# def validation_exception_handler(request: Request, error: RequestValidationError):
-#     """
-#     In case of an empty field in a pydantic BaseModel, we don't return the whole
-#     message.
-#     """
-#     return JSONResponse(
-#         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-#         content="empty non-null field or bad request",
-#     )
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.exception_handler(RequestValidationError)
+# pylint: disable=unused-argument
+def validation_exception_handler(request: Request, error: RequestValidationError):
+    """
+    In case of an empty field in a pydantic BaseModel, we don't return the whole
+    message.
+    """
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content="empty non-null field or bad request",
+    )
 
 
 @app.get("/")
@@ -126,4 +127,4 @@ if __name__ == "__main__":
             f"{colorama.Fore.GREEN}DATABASE: {colorama.Fore.WHITE}Database reset, created primary roles."
         )
 
-    uvicorn.run(app="main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app="main:app", reload=True)
