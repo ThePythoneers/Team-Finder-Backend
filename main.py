@@ -26,7 +26,6 @@ from proposals import proposal
 from chatgpt_integration import gpt
 from technology_stack import technology
 from debug import debugging
-from notifications import notification
 
 from sqlalchemy.schema import DropTable
 from sqlalchemy.ext.compiler import compiles
