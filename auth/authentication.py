@@ -10,6 +10,7 @@ from typing import Annotated
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from dotenv import dotenv_values
+import os
 
 
 from jose import jwt, JWTError
@@ -31,9 +32,9 @@ router = APIRouter(tags={"Authentication"}, prefix="/auth")
 
 env = dotenv_values(".env")
 
-SECRET_KEY = env["SECRET_KEY"]
-ALGORITHM = env["ALGORITHM"]
-TOKEN_EXPIRATION_MINUTES = int(env["TOKEN_EXPIRATION_MINUTES"])
+SECRET_KEY = os.environ.get("SECRET_KEY")
+ALGORITHM = os.environ.get("ALGORITHM")
+TOKEN_EXPIRATION_MINUTES = int(os.environ.get("TOKEN_EXPIRATION_MINUTES"))
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
@@ -92,7 +93,6 @@ def create_user_employee(
         username=create_user_request.username,
         email=create_user_request.email,
         hashed_password=bcrypt_context.hash(create_user_request.password),
-        work_hours=0,
     )
 
     create_user_model.primary_roles.append(
@@ -140,7 +140,6 @@ def create_user(db: DbDependency, create_user_request: RegisterOwner):
         username=create_user_request.username,
         email=create_user_request.email,
         hashed_password=bcrypt_context.hash(create_user_request.password),
-        work_hours=0,
     )
     create_user_model.primary_roles.append(
         db.query(models.Primary_Roles).filter_by(role_name="Organization Admin").first()
@@ -201,7 +200,6 @@ def login_for_access_token(
                 "department_id": (
                     str(user.department_id) if user.department_id else None
                 ),
-                "work_hours": user.work_hours,
                 "skills": [{"skill_id": str(i.id)} for i in user.skill_level],
             },
         },
@@ -234,7 +232,6 @@ def get_info_from_token(db: DbDependency, _token: str):
                 "department_id": (
                     str(user.department_id) if user.department_id else None
                 ),
-                "work_hours": user.work_hours,
                 "skills": [{"skill_id": str(i.id)} for i in user.skill_level],
             },
         },

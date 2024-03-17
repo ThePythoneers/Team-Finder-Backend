@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from database.db import SESSIONLOCAL
-from database.models import Projects, Skill, User, Skill_Category
+from database.models import Projects, Skill, User, Skill_Category, WorkHours
 from database.models import User_Skills
 
 from auth import authentication
@@ -69,6 +69,11 @@ def get_user_info(db: DbDependency, auth: UserDependency, user_id: UUID):
             content="You are not allowed to view users from another organization other than yours.",
         )
 
+    work_hours = db.query(WorkHours).filter_by(user_id=user_id).all()
+    total_work_hours = 0
+    for work in work_hours:
+        total_work_hours += work.work_hours
+
     user_data = {
         "id": str(user.id),
         "username": user.username,
@@ -77,7 +82,7 @@ def get_user_info(db: DbDependency, auth: UserDependency, user_id: UUID):
         "organization_name": user.organization.organization_name,
         "roles": [i.role_name for i in user.primary_roles],
         "department_id": (str(user.department_id) if user.department_id else None),
-        "work_hours": user.work_hours,
+        "work_hours": total_work_hours,
     }
     return JSONResponse(content=user_data, status_code=status.HTTP_200_OK)
 
@@ -205,11 +210,10 @@ def get_skills_from_any_user(db: DbDependency, auth: UserDependency, _id: UUID):
         )
 
     if not return_list:
-        return []
-        # return JSONResponse(
-        #     content="This user doesn't have any skills assigned",
-        #     status_code=status.HTTP_200_OK,
-        # )
+        return JSONResponse(
+            content="This user doesn't have any skills assigned",
+            status_code=status.HTTP_200_OK,
+        )
 
     return JSONResponse(content=return_list, status_code=status.HTTP_200_OK)
 

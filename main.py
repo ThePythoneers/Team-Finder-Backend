@@ -57,15 +57,14 @@ def get_db():
 
 models.Base.metadata.create_all(bind=ENGINE)
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
-
 app.include_router(authentication.router)
 app.include_router(profile.router)
 app.include_router(croles.router)
@@ -77,7 +76,7 @@ app.include_router(projects.router)
 app.include_router(proposal.router)
 app.include_router(gpt.router)
 app.include_router(technology.router)
-app.include_router(notification.router)
+# app.include_router(notification.router)
 
 if DEBUG_HELPFUL_ENDPOINTS:
     print(f"{colorama.Fore.GREEN}DEBUG: {colorama.Fore.WHITE}   Included DEBUG router.")

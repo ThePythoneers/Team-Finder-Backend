@@ -15,6 +15,7 @@ from database.models import (
     TechnologyStack,
     User,
     Projects,
+    WorkHours,
 )
 from database.db import SESSIONLOCAL
 from project.base_models import (
@@ -24,7 +25,7 @@ from project.base_models import (
     GetAvailableEmployeesModel,
     UpdateProjectModel,
 )
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 
 router = APIRouter(prefix="/project", tags={"Projects"})
 
@@ -73,17 +74,11 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
             status_code=status.HTTP_400_BAD_REQUEST,
             content="You cannot specify a deadline if the project period is not fixed.",
         )
-    if _body.project_period == "Fixed":
-        if (_body.deadline_date - _body.start_date).total_seconds() < 0:
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content="The deadline cannot be assigned before the start of the project.",
-            )
-    # if _body.work_hours <= 0 or _body.work_hours > 8:
-    #     return JSONResponse(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         content="Work hours needs to be a value between 1 and 8",
-    #     )
+    if (_body.deadline_date - _body.start_date).total_seconds() < 0:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="The deadline cannot be assigned before the start of the project.",
+        )
     create_project_model = Projects(
         project_name=_body.project_name,
         project_period=_body.project_period,
@@ -91,22 +86,16 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
         description=_body.general_description,
         start_date=_body.start_date,
         deadline_date=_body.deadline_date,
-        # work_hours=_body.work_hours,
         organization_id=action_user.organization_id,
         project_manager=action_user.id,
     )
-    for tech in _body.technologies:
-        create_project_model.technologies.append(
-            db.query(TechnologyStack).filter_by(id=tech).first()
-        )
-    for role in _body.project_roles:
-        create_project_model.project_roles.append(
-            db.query(Custom_Roles).filter_by(id=role).first()
-        )
-    create_project_model.users.append(action_user)
 
     db.add(create_project_model)
     db.commit()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content="Project created succesfully."
+    )
 
 
 @router.patch("/")
@@ -146,13 +135,12 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
                 content="The deadline cannot be assigned before the start of the project.",
             )
 
-    # if _body.work_hours:
-    #     if _body.work_hours < 0 or _body.work_hours > 8:
-    #         return JSONResponse(
-    #             status_code=status.HTTP_400_BAD_REQUEST,
-    #             content="Work hours needs to be a value between 1 and 8",
-    #         )
-    update_dict = {}
+    if _body.work_hours:
+        if _body.work_hours < 0 or _body.work_hours > 8:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content="Work hours needs to be a value between 1 and 8",
+            )
 
     project_id.project_name = _body.project_name
     project_id.project_period = _body.project_period
@@ -160,7 +148,7 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
     project_id.deadline_date = _body.deadline_date
     project_id.project_status = _body.project_status
     project_id.description = _body.description
-    # project_id.work_hours = _body.work_hours
+    project_id.work_hours = _body.work_hours
 
     db.commit()
 
@@ -193,17 +181,6 @@ def delete_project(db: DbDependency, user: UserDependency, _id: UUID):
     )
 
 
-@router.post("/assign")
-def assign_user_to_project(
-    db: DbDependency, user: UserDependency, _body: AssignUserModel
-):
-    project = db.query(Projects).filter_by(id=_body.project_id).first()
-    victim_user = db.query(User).filter_by(id=_body.user_id).first()
-    project.users.append(victim_user)
-    victim_user.work_hours += project.work_hours
-    db.commit()
-
-
 @router.post("/find")
 def get_available_employees(
     db: DbDependency, user: UserDependency, _body: GetAvailableEmployeesModel
@@ -220,36 +197,42 @@ def get_available_employees(
             content="This organization does not have any employees.",
         )
 
-    # ! TODO: check la technology si skills sa vedem daca se potrivesc
-
     available_employees = []
 
     for i in organization.employees:
+        work_hours = db.query(WorkHours).filter_by(user_id=i.id).all()
+        total_work_hours = 0
+        for i in work_hours:
+            total_work_hours += i.work_hours
+
         i.__dict__["method"] = []
-        if _body.partially_available and i.work_hours < 8:
+        i.__dict__["work_hours"] = total_work_hours
+        if _body.partially_available and 1 < total_work_hours < 8:
             i.__dict__["method"].append("partially_available")
             available_employees.append(i.__dict__)
+
         if _body.close_to_finish:
             for j in i.projects:
-                project_deadline = j.deadline_date
-                today = datetime.now().date()
-                six_weeks_later = today + timedelta(weeks=6)
+                d1 = j.deadline_date
+                d2 = date.today()
 
-                if project_deadline:
-                    if (
-                        today
-                        < project_deadline
-                        < _body.deadline.date()
-                        < six_weeks_later
-                    ):
+                monday1 = d2 - timedelta(days=d2.weekday())
+                monday2 = d1 - timedelta(days=d1.weekday())
 
-                        i.__dict__["method"].append("close_to_finish")
-                        available_employees.append(i.__dict__)
+                # Calculate the difference in weeks
+                weeks_difference = (monday2 - monday1).days // 7
+                print(weeks_difference)
 
-        if _body.unavailable and i.work_hours >= 8:
+                if weeks_difference < _body.deadline:
+
+                    i.__dict__["method"].append("close_to_finish")
+                    available_employees.append(i.__dict__)
+
+        if _body.unavailable and total_work_hours >= 8:
             i.__dict__["method"].append("unavailable")
             available_employees.append(i.__dict__)
         if not i.projects:
+            i.__dict__["method"].append("available")
             available_employees.append(i)
     return available_employees
 
@@ -265,20 +248,15 @@ def get_project_info(db: DbDependency, user: UserDependency, _id: str):
         "deadline_date": str(project.deadline_date),
         "project_status": project.project_status,
         "description": project.description,
-        "users": [
-            {"id": str(i.id), "username:": i.username, "email": i.email}
-            for i in project.users
-        ],
+        "users": [{"id": str(i.id), "username:": i.username} for i in project.users],
         "project_roles": [i.custom_role_name for i in project.project_roles],
-        # "work_hours": project.work_hours,
+        "work_hours": project.work_hours,
         "technology_stack": [i.tech_name for i in project.technologies],
         "deallocated_users": [
             {"id": str(i.id), "username:": i.username}
             for i in project.deallocated_users
         ],
-        "project_manager": (
-            str(project.project_manager) if project.project_manager else None
-        ),
+        "project_manager": str(project.project_manager),
     }
 
     return JSONResponse(status_code=200, content=project_dict)
@@ -292,14 +270,7 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
     )
     if not projects:
         return []
-    projects = action_user.projects
-
-    if not projects:
-        return []
-    # if not projects:
-    #     return JSONResponse(
-    #         status_code=404, content="This organization does not have any projects yet."
-    #     )
+        # return JSONResponse(status_code=404, content=[])
     project_list = []
     for i in projects:
         project_list.append(
@@ -308,29 +279,21 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
                 "project_name": i.project_name,
                 "project_period": i.project_period,
                 "start_date": str(i.start_date),
-                "deadline_date": str(i.deadline_date) if i.deadline_date else None,
+                "deadline_date": str(i.deadline_date),
                 "project_status": i.project_status,
                 "description": i.description,
-                "users": [
-                    {"id": str(i.id), "username": i.username, "email": i.email}
-                    for i in i.users
-                ],
-                "project_roles": [
-                    {"id": str(i.id), "custom_role_name": i.custom_role_name}
-                    for i in i.project_roles
-                ],
-                # "work_hours": i.work_hours,
+                "users": [{"id": str(i.id), "username:": i.username} for i in i.users],
+                "project_roles": [i.custom_role_name for i in i.project_roles],
+                "work_hours": i.work_hours,
                 "technology_stack": [
-                    {"id": str(i.id), "technology_name": i.tech_name}
+                    {"technology_name": i.tech_name, "id": str(i.id)}
                     for i in i.technologies
                 ],
                 "deallocated_users": [
                     {"id": str(j.id), "username:": j.username}
                     for j in i.deallocated_users
                 ],
-                "project_manager": (
-                    str(i.project_manager) if i.project_manager else None
-                ),
+                "project_manager": str(i.project_manager),
             }
         )
 

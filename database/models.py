@@ -17,6 +17,7 @@ from sqlalchemy import (
     DATE,
     UniqueConstraint,
     BOOLEAN,
+    Enum,
 )
 from sqlalchemy import DateTime
 
@@ -80,6 +81,13 @@ project_technology = Table(
     Column("project_id", ForeignKey("projects.id")),
 )
 
+allocation_roles = Table(
+    "allocation_roles",
+    Base.metadata,
+    Column("role_id", ForeignKey("custom_roles.id")),
+    Column("allocation_id", ForeignKey("allocation_proposals.id")),
+)
+
 
 # pylint: disable=invalid-name
 class User_Skills(Base):
@@ -92,7 +100,7 @@ class User_Skills(Base):
     training_title = Column(String)
     training_description = Column(String)
     project_link = Column(String)
-    verified = Column(BOOLEAN, default=False)
+    verified = Column(BOOLEAN)
     user = relationship("User", back_populates="skill_level")
 
 
@@ -147,7 +155,6 @@ class User(Base):
     skill_level = relationship("User_Skills", back_populates="user")
     # department
     projects = relationship("Projects", secondary=user_projects, back_populates="users")
-    work_hours = Column(INTEGER)
 
 
 # pylint: disable=invalid-name
@@ -234,6 +241,30 @@ class Custom_Roles(Base):
     )
 
 
+class AllocationProposal(Base):
+    __tablename__ = "allocation_proposals"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False)
+    project_id_allocation = Column(
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
+    )
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    comments = Column(String)
+    work_hours = Column(INTEGER)
+    roles = relationship(
+        "Custom_Roles", secondary=allocation_roles, backref="allocations"
+    )
+
+
+class DeallocationProposal(Base):
+    __tablename__ = "deallocation_proposals"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False)
+    project_id_deallocation = Column(
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
+    )
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    reason = Column(String)
+
+
 class Projects(Base):
     __tablename__ = "projects"
 
@@ -254,33 +285,10 @@ class Projects(Base):
     deallocated_users = relationship(
         "User", secondary=dealloc_user_projects, backref="past_projects"
     )
-    # work_hours = Column(INTEGER, nullable=False)
     technologies = relationship(
         "TechnologyStack", secondary=project_technology, back_populates="projects"
     )
     project_manager = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-
-
-class AllocationProposal(Base):
-    __tablename__ = "allocation_proposals"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False)
-    project_id_allocation = Column(
-        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
-    )
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    work_hours = Column(INTEGER)
-    team_roles = Column(ARRAY(UUID))
-    comments = Column(String)
-
-
-class DeallocationProposal(Base):
-    __tablename__ = "deallocation_proposals"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False)
-    project_id_deallocation = Column(
-        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
-    )
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    reason = Column(String)
 
 
 class TechnologyStack(Base):
@@ -293,3 +301,22 @@ class TechnologyStack(Base):
     projects = relationship(
         "Projects", secondary=project_technology, back_populates="technologies"
     )
+
+
+class WorkHours(Base):
+    __tablename__ = "project_work_hours"
+    id = Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid4)
+    user_id = Column(UUID, ForeignKey("users.id"), nullable=False)
+    project_id = Column(UUID, ForeignKey("projects.id"))
+    work_hours = Column(INTEGER)
+
+
+class Notifications(Base):
+    __tablename__ = "notifications"
+    id = Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid4)
+    type = Column(
+        Enum("ALLOCATION", "DEALLOCATION", "VALIDATION", name="notification_type")
+    )
+    to_manager = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    for_user = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    sent = Column(BOOLEAN, default=False)
