@@ -101,6 +101,11 @@ def create_allocation_proposal(
             )
         create_proposal_model.roles.append(role)
 
+    if not victim_user.department:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="This user is not in any departments.",
+        )
     create_notification_model = Notifications(
         type="ALLOCATION",
         to_manager=victim_user.department.department_manager,

@@ -45,7 +45,7 @@ def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel
             content="Only a department manager can modify skills.",
         )
 
-    department = db.query(Department).filter_by(id=action_user.department_id).first()
+    # department = db.query(Department).filter_by(id=action_user.department_id).first()
 
     # if not department:
     #     return JSONResponse(
@@ -59,8 +59,8 @@ def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel
         author=action_user.id,
     )
 
-    if department:
-        create_skill_model.departments.append(department)
+    # if department:
+    #     create_skill_model.departments.append(department)
     create_skill_model.skill_category = _body.skill_category
 
     db.add(create_skill_model)
@@ -119,7 +119,7 @@ def create_skill_category(db: DbDependency, user: UserDependency, name: str):
     )
 
 
-@router.patch("/category/{name}")
+@router.patch("/category/")
 def edit_skill_cateogry(
     db: DbDependency, user: UserDependency, _body: EditSkillCategoryModel
 ):
@@ -198,6 +198,12 @@ def get_skill_categories(db: DbDependency, user: UserDependency):
 @router.get("/category/{_id}")
 def get_skill_category_by_id(db: DbDependency, user: UserDependency, _id: str):
     category = db.query(Skill_Category).filter_by(id=_id).first()
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You are not allowed to do this.",
+        )
     if not category:
         return []
     return category
@@ -285,4 +291,48 @@ def verify_skill(db: DbDependency, user: UserDependency, _id: UUID):
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=f"Skill {'un' if not user_skill.verified else ''}verified",
+    )
+
+
+@router.get("/verify")
+def get_all_unverified_skills(db: DbDependency, user: UserDependency):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+
+    if not action_user.department:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You don't have the required permission to do this.",
+        )
+
+    users = db.query(User).filter_by(department_id=action_user.department_id).all()
+
+    if not users:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="You don't have any users in this department.",
+        )
+    roles = []
+    for i in users:
+        user_roles = db.query(User_Skills).filter_by(user_id=i.id, verified=False).all()
+        print(i.username)
+        print(user_roles)
+        for j in user_roles:
+            roles.append(j)
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=[
+            {
+                "id": str(i.id),
+                "skill_level": i.skill_level,
+                "training_title": i.training_title,
+                "project_link": i.project_link,
+                "user_id": str(i.user_id),
+                "skill_id": str(i.skill_id),
+                "skill_experience": i.skill_experience,
+                "training_description": i.training_description,
+                "verified": i.verified,
+            }
+            for i in roles
+        ],
     )
