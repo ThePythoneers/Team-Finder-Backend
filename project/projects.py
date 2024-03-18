@@ -25,7 +25,7 @@ from project.base_models import (
     GetAvailableEmployeesModel,
     UpdateProjectModel,
 )
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/project", tags={"Projects"})
 
@@ -89,6 +89,18 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
         organization_id=action_user.organization_id,
         project_manager=action_user.id,
     )
+
+    for i in _body.project_roles:
+        role = db.query(Custom_Roles).filter_by(id=i).first()
+
+        if role:
+            create_project_model.project_roles.append(role)
+
+    for i in _body.technologies:
+        technology = db.query(TechnologyStack).filter_by(id=i).first()
+
+        if technology:
+            create_project_model.project_roles.append(technology)
 
     db.add(create_project_model)
     db.commit()
@@ -202,39 +214,53 @@ def get_available_employees(
     for i in organization.employees:
         work_hours = db.query(WorkHours).filter_by(user_id=i.id).all()
         total_work_hours = 0
-        for i in work_hours:
-            total_work_hours += i.work_hours
+        for k in work_hours:
+            total_work_hours += k.work_hours
 
         i.__dict__["method"] = []
         i.__dict__["work_hours"] = total_work_hours
+
         if _body.partially_available and 1 < total_work_hours < 8:
             i.__dict__["method"].append("partially_available")
-            available_employees.append(i.__dict__)
 
         if _body.close_to_finish:
             for j in i.projects:
                 d1 = j.deadline_date
-                d2 = date.today()
+                d2 = datetime.today()
+                print(d1)
+                print(d2)
+                print(((d1 - d2)).total_seconds())
+                print(_body.deadline * 604800)
 
-                monday1 = d2 - timedelta(days=d2.weekday())
-                monday2 = d1 - timedelta(days=d1.weekday())
-
-                # Calculate the difference in weeks
-                weeks_difference = (monday2 - monday1).days // 7
-                print(weeks_difference)
-
-                if weeks_difference < _body.deadline:
+                if (
+                    (d1 - d2)
+                ).total_seconds() < _body.deadline * 604800:  # seconds in a week
 
                     i.__dict__["method"].append("close_to_finish")
-                    available_employees.append(i.__dict__)
 
         if _body.unavailable and total_work_hours >= 8:
             i.__dict__["method"].append("unavailable")
-            available_employees.append(i.__dict__)
+
         if not i.projects:
             i.__dict__["method"].append("available")
-            available_employees.append(i)
-    return available_employees
+
+        available_employees.append(i.__dict__)
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=[
+            {
+                "id": str(i["id"]),
+                "email": i["email"],
+                "organization_id": str(i["organization_id"]),
+                "department_id": str(i["department_id"]),
+                "method": [k for k in i["method"]],
+                "work_hours": total_work_hours,
+                "projects": [str(l.id) for l in i["projects"]],
+            }
+            for i in available_employees
+        ],
+    )
 
 
 @router.get("/{_id}")
@@ -273,6 +299,7 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
         # return JSONResponse(status_code=404, content=[])
     project_list = []
     for i in projects:
+
         project_list.append(
             {
                 "project_id": str(i.id),
@@ -284,7 +311,6 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
                 "description": i.description,
                 "users": [{"id": str(i.id), "username:": i.username} for i in i.users],
                 "project_roles": [i.custom_role_name for i in i.project_roles],
-                "work_hours": i.work_hours,
                 "technology_stack": [
                     {"technology_name": i.tech_name, "id": str(i.id)}
                     for i in i.technologies

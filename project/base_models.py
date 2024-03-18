@@ -1,5 +1,5 @@
 from typing import Optional
-from datetime import date
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -8,18 +8,20 @@ from pydantic import BaseModel
 class CreateProjectModel(BaseModel):
     project_name: str
     project_period: str
-    start_date: date
-    deadline_date: Optional[date] = None
+    start_date: datetime
+    deadline_date: Optional[datetime] = None
     project_status: str
     general_description: str
+    project_roles: list[UUID]
+    technologies: list[UUID]
 
 
 class UpdateProjectModel(BaseModel):
     id: UUID
     project_name: str
     project_period: str
-    start_date: date
-    deadline_date: Optional[date] = None
+    start_date: datetime
+    deadline_date: Optional[datetime] = None
     project_status: str
     description: str
 

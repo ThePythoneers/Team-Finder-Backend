@@ -14,7 +14,7 @@ from sqlalchemy import (
     UUID,
     String,
     INTEGER,
-    DATE,
+    DateTime,
     UniqueConstraint,
     BOOLEAN,
     Enum,
@@ -100,7 +100,7 @@ class User_Skills(Base):
     training_title = Column(String)
     training_description = Column(String)
     project_link = Column(String)
-    verified = Column(BOOLEAN)
+    verified = Column(BOOLEAN, default=False)
     user = relationship("User", back_populates="skill_level")
 
 
@@ -272,8 +272,8 @@ class Projects(Base):
     organization_id = Column(UUID, ForeignKey("organizations.id"), nullable=False)
     project_name = Column(String, nullable=False)
     project_period = Column(String, nullable=False)  # Fixed, Ongoing
-    start_date = Column(DATE, nullable=False)
-    deadline_date = Column(DATE, nullable=True)
+    start_date = Column(DateTime, nullable=False)
+    deadline_date = Column(DateTime, nullable=True)
     project_status = Column(
         String, nullable=False
     )  # Not started | Starting | In Progress | Closing | Closed
