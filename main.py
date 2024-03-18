@@ -26,6 +26,7 @@ from proposals import proposal
 from chatgpt_integration import gpt
 from technology_stack import technology
 from debug import debugging
+from notifications import notification
 
 from sqlalchemy.schema import DropTable
 from sqlalchemy.ext.compiler import compiles
@@ -57,14 +58,6 @@ def get_db():
 
 models.Base.metadata.create_all(bind=ENGINE)
 
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 app.include_router(authentication.router)
 app.include_router(profile.router)
 app.include_router(croles.router)
@@ -76,7 +69,7 @@ app.include_router(projects.router)
 app.include_router(proposal.router)
 app.include_router(gpt.router)
 app.include_router(technology.router)
-# app.include_router(notification.router)
+app.include_router(notification.router)
 
 if DEBUG_HELPFUL_ENDPOINTS:
     print(f"{colorama.Fore.GREEN}DEBUG: {colorama.Fore.WHITE}   Included DEBUG router.")
@@ -95,6 +88,15 @@ def validation_exception_handler(request: Request, error: RequestValidationError
         content="empty non-null field or bad request",
     )
 
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():

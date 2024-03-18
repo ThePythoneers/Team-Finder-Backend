@@ -80,11 +80,12 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
             status_code=status.HTTP_400_BAD_REQUEST,
             content="You cannot specify a deadline if the project period is not fixed.",
         )
-    if (_body.deadline_date - _body.start_date).total_seconds() < 0:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content="The deadline cannot be assigned before the start of the project.",
-        )
+    if _body.deadline_date:
+        if (_body.deadline_date - _body.start_date).total_seconds() < 0:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content="The deadline cannot be assigned before the start of the project.",
+            )
     create_project_model = Projects(
         project_name=_body.project_name,
         project_period=_body.project_period,
@@ -303,7 +304,6 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
     )
     if not projects:
         return []
-        # return JSONResponse(status_code=404, content=[])
     project_list = []
     for i in projects:
 

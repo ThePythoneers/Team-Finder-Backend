@@ -52,13 +52,6 @@ def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel
             content="Only a department manager can modify skills.",
         )
 
-    # department = db.query(Department).filter_by(id=action_user.department_id).first()
-
-    # if not department:
-    #     return JSONResponse(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         content="You are not the manager of any department.",
-    #     )
     create_skill_model = Skill(
         skill_name=_body.skill_name,
         skill_description=_body.description,
@@ -66,8 +59,11 @@ def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel
         author=action_user.id,
     )
 
-    # if department:
-    #     create_skill_model.departments.append(department)
+    if _body.department_id:
+        department = db.query(Department).filter_by(id=_body.department_id).first()
+        if department:
+            create_skill_model.departments.append(department)
+
     for i in _body.skill_category:
         if not db.query(Skill_Category).filter_by(id=i).first():
             return JSONResponse(
