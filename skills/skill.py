@@ -354,12 +354,14 @@ def get_all_unverified_skills(db: DbDependency, user: UserDependency):
             {
                 "id": str(i.id),
                 "skill_level": i.skill_level,
-                "training_title": i.training_title,
-                "project_link": i.project_link,
+                "training_title": i.training_title if i.training_title else None,
+                "project_link": i.project_link if i.project_link else None,
                 "user_id": str(i.user_id),
                 "skill_id": str(i.skill_id),
                 "skill_experience": i.skill_experience,
-                "training_description": i.training_description,
+                "training_description": (
+                    i.training_description if i.training_description else None
+                ),
                 "verified": i.verified,
             }
             for i in roles

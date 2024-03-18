@@ -64,7 +64,7 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
             content="You can only assign Not Started and Starting when creating a new project.",
         )
 
-    if not _body.project_period == "Fixed" or _body.project_period == "Ongoing":
+    if _body.project_period != "Fixed" and _body.project_period != "Ongoing":
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content="Project period must be Fixed or Ongoing.",
@@ -130,7 +130,7 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
             status_code=400, content="Only a Project Manager can update a new project."
         )
 
-    if not _body.project_period == "Fixed" or _body.project_period == "Ongoing":
+    if _body.project_period != "Fixed" and _body.project_period != "Ongoing":
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content="Project period must be Fixed or Ongoing.",
@@ -258,7 +258,9 @@ def get_available_employees(
                 "email": i["email"],
                 "username": i["username"],
                 "organization_id": str(i["organization_id"]),
-                "department_id": str(i["department_id"]),
+                "department_id": (
+                    str(i["department_id"]) if i["department_id"] else None
+                ),
                 "method": [k for k in i["method"]],
                 "work_hours": total_work_hours,
                 "projects": [str(l.id) for l in i["projects"]],
@@ -285,7 +287,6 @@ def get_project_info(db: DbDependency, user: UserDependency, _id: str):
             {"id": str(i.id), "role_name": i.custom_role_name}
             for i in project.project_roles
         ],
-        "work_hours": project.work_hours,
         "technology_stack": [i.tech_name for i in project.technologies],
         "deallocated_users": [
             {"id": str(i.id), "username:": i.username}
@@ -317,7 +318,10 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
                 "deadline_date": str(i.deadline_date) if i.deadline_date else None,
                 "project_status": i.project_status,
                 "description": i.description,
-                "users": [{"id": str(i.id), "username:": i.username} for i in i.users],
+                "users": [
+                    {"id": str(i.id), "username": i.username, "email": i.email}
+                    for i in i.users
+                ],
                 "project_roles": [
                     {"id": str(i.id), "role_name": i.custom_role_name}
                     for i in i.project_roles
@@ -327,7 +331,7 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
                     for i in i.technologies
                 ],
                 "deallocated_users": [
-                    {"id": str(j.id), "username:": j.username}
+                    {"id": str(j.id), "username": j.username, "email": i.email}
                     for j in i.deallocated_users
                 ],
                 "project_manager": str(i.project_manager),
@@ -375,7 +379,9 @@ def get_projects_related_to_department(
                 "project_name": i.project_name,
                 "deadline_date": i.deadline_date,
                 "project_status": i.project_status,
-                "users": [str(i.id) for i in i.users],
+                "users": [
+                    {"id": str(i.id), "username": str(i.username)} for i in i.users
+                ],
             }
         )
     # department = db.query(Department).filter_by(id=action_user.department_id).first()

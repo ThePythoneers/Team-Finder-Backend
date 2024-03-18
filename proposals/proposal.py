@@ -134,7 +134,7 @@ def create_deallocation_proposal(
 ):
     # known issue: work_hours does not reset as intended
     action_user = db.query(User).filter_by(id=user["id"]).first()
-    project = db.query(Projects).filter_by(project_manager=action_user.id).first()
+    project = db.query(Projects).filter_by(id=_body.project_id).first()
     victim_user = db.query(User).filter_by(id=_body.user_id).first()
     if not "Project Manager" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
@@ -350,11 +350,10 @@ def get_deallocation_proposal_from_department(db: DbDependency, user: UserDepend
         content=[
             {
                 "proposal_id": str(i.id),
-                "project_id": str(i.project_id_allocation),
+                "project_id": str(i.project_id_deallocation),
                 "user_id": str(i.user_id),
-                "comments": i.comments,
-                "work_hours": i.work_hours,
-                "proposed_roles": [str(j.id) for j in i.roles],
+                "comments": i.reason,
+                # "proposed_roles": [str(j.id) for j in i.roles],
             }
             for i in proposals
         ],
@@ -432,6 +431,7 @@ def accept_deallocation_proposal(db: DbDependency, user: UserDependency, _id: UU
     proposal = db.query(DeallocationProposal).filter_by(id=_id).first()
     action_user = db.query(User).filter_by(id=user["id"]).first()
 
+    print(proposal.__dict__)
     if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,

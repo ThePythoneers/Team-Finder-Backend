@@ -10,5 +10,6 @@ class CreateAllocationProposal(BaseModel):
     roles: list[UUID]
 
 class CreateDeallocationProposal(BaseModel):
+    project_id: UUID
     user_id: UUID
     comment: str

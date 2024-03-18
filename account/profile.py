@@ -82,6 +82,7 @@ def get_user_info(db: DbDependency, auth: UserDependency, user_id: UUID):
         "organization_name": user.organization.organization_name,
         "roles": [i.role_name for i in user.primary_roles],
         "department_id": (str(user.department_id) if user.department_id else None),
+        "projects": [str(i.id) for i in user.projects],
         "work_hours": total_work_hours,
     }
     return JSONResponse(content=user_data, status_code=status.HTTP_200_OK)
@@ -127,8 +128,6 @@ def assign_skill_to_user(
         training_description=_body.training_description,
         project_link=_body.project_link,
     )
-
-    # ! TODO: new column verified true / false (false by default)
 
     db.add(create_user_skills_model)
     db.commit()
