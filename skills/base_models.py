@@ -7,7 +7,7 @@ class CreateSkillModel(BaseModel):
     skill_category: list[UUID]
     skill_name: str
     description: str
-    department_id: Optional[UUID]
+    department_id: Optional[UUID] = None
 
 
 class EditSkillCategoryModel(BaseModel):

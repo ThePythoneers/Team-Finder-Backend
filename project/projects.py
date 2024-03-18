@@ -222,6 +222,7 @@ def get_available_employees(
 
         i.__dict__["method"] = []
         i.__dict__["work_hours"] = total_work_hours
+        i.__dict__["primary_roles"] = [j.role_name for j in i.primary_roles]
 
         if _body.partially_available and 1 < total_work_hours < 8:
             i.__dict__["method"].append("partially_available")
@@ -261,7 +262,7 @@ def get_available_employees(
                 "method": [k for k in i["method"]],
                 "work_hours": total_work_hours,
                 "projects": [str(l.id) for l in i["projects"]],
-                "primary_roles": [i.role_name for i in i.primary_roles],
+                "primary_roles": [k for k in i["primary_roles"]],
             }
             for i in available_employees
         ],
