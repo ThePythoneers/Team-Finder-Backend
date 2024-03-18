@@ -100,7 +100,7 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
         technology = db.query(TechnologyStack).filter_by(id=i).first()
 
         if technology:
-            create_project_model.project_roles.append(technology)
+            create_project_model.technologies.append(technology)
 
     db.add(create_project_model)
     db.commit()
