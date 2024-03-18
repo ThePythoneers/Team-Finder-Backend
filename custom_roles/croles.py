@@ -86,7 +86,25 @@ def assign_role_to_user(
     victim_user = db.query(User).filter_by(id=_body.user_id).first()
     project = db.query(Projects).filter_by(id=_body.project_id).first()
     custom_role = db.query(Custom_Roles).filter_by(id=_body.role_id).first()
-
+    role_check = (
+        db.query(Users_Custom_Roles)
+        .filter_by(
+            user_id=_body.user_id,
+            custom_role_id=_body.role_id,
+            project_id=_body.project_id,
+        )
+        .first()
+    )
+    if not custom_role or not project or not victim_user:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="The fields introduced cannot be found in the database.",
+        )
+    if role_check:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="This role has already been assigned to this user.",
+        )
     if (
         victim_user.organization_id != project.organization_id
         and project.organization_id != custom_role.organization_id
@@ -124,6 +142,11 @@ def delete_role_from_user(
     victim_user = db.query(User).filter_by(id=_body.user_id).first()
     project = db.query(Projects).filter_by(id=_body.project_id).first()
     custom_role = db.query(Custom_Roles).filter_by(id=_body.role_id).first()
+    if not custom_role or not project or not victim_user:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="The fields introduced cannot be found in the database.",
+        )
 
     if (
         victim_user.organization_id != project.organization_id
@@ -155,12 +178,15 @@ def get_all_roles_from_user(user: UserDependency, db: DbDependency, _id: UUID):
     roles = db.query(Users_Custom_Roles).filter_by(user_id=_id).all()
     return_list = list()
     for i in roles:
+        role_name = db.query(Custom_Roles).filter_by(id=i.custom_role_id).first()
+        if not role_name:
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content="Unexpected error for skills, a non-existing skill has been assigned to an user",
+            )
         return_list.append(
             {
-                "role_name": db.query(Custom_Roles)
-                .filter_by(id=i.custom_role_id)
-                .first()
-                .custom_role_name,
+                "role_name": role_name.custom_role_name,
                 "role_id": str(i.custom_role_id),
             }
         )
@@ -193,6 +219,11 @@ def edit_custom_role(
             content="Only an Organization admin can edit team roles.",
         )
     role = db.query(Custom_Roles).filter_by(id=_body.role_id).first()
+    if not role:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="This custom role does not exist.",
+        )
     role.custom_role_name = _body.role_name
     db.commit()
 

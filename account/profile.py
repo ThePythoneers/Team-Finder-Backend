@@ -109,7 +109,7 @@ def assign_skill_to_user(
 
     user_skill = (
         db.query(User_Skills)
-        .filter_by(user_id=_body.user_id, skill_id=_body.skill_id)
+        .filter_by(user_id=action_user.id, skill_id=_body.skill_id)
         .first()
     )
     if user_skill:
@@ -225,7 +225,7 @@ def delete_skill_from_user(
     """
     Delete a skill from an id.
     """
-
+    action_user = db.query(User).filter_by(id=auth["id"]).first()
     skill = db.query(Skill).filter_by(id=_body.skill_id).first()
 
     if not skill:
@@ -236,7 +236,7 @@ def delete_skill_from_user(
 
     user_skill = (
         db.query(User_Skills)
-        .filter_by(user_id=_body.user_id, skill_id=_body.skill_id)
+        .filter_by(user_id=action_user.id, skill_id=_body.skill_id)
         .first()
     )
 

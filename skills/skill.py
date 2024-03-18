@@ -38,6 +38,13 @@ UserDependency = Annotated[dict, Depends(authentication.get_current_user)]
 @router.post("/")
 def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel):
     action_user = db.query(User).filter_by(id=user["id"]).first()
+    check_name = db.query(Skill).filter_by(skill_name=_body.skill_name).first()
+
+    if check_name:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="A skill with the same name already exists.",
+        )
 
     if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
@@ -61,6 +68,12 @@ def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel
 
     # if department:
     #     create_skill_model.departments.append(department)
+    for i in _body.skill_category:
+        if not db.query(Skill_Category).filter_by(id=i).first():
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content="One or more skills do not exist.",
+            )
     create_skill_model.skill_category = _body.skill_category
 
     db.add(create_skill_model)
@@ -128,6 +141,12 @@ def edit_skill_cateogry(
         db.query(Skill_Category).filter_by(category_name=_body.category_name).first()
     )
     category = db.query(Skill_Category).filter_by(id=_body.category_id).first()
+
+    if not category:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="This skill category does not exist.",
+        )
     if name_check:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -153,7 +172,15 @@ def edit_skill_cateogry(
 def delete_skill_category(db: DbDependency, user: UserDependency, _id: str):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     category = db.query(Skill_Category).filter_by(id=_id)
+    can_delete = (
+        db.query(Skill).filter_by(organization_id=action_user.organization_id).first()
+    )
 
+    if can_delete:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You cannot delete this skill category because it's being used in one or more skills.",
+        )
     if not category.first():
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,

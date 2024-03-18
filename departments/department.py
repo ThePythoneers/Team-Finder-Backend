@@ -98,7 +98,9 @@ def get_department_info(db: DbDependency, user: UserDependency, _id: str):
             ),
             "organization_id": str(department.organization_id),
             "department_users": [str(i.id) for i in department.department_users],
-            "skills": [str(i.id) for i in department.skills] if department.skills else None,
+            "skills": (
+                [str(i.id) for i in department.skills] if department.skills else None
+            ),
             "created_at": str(department.created_at),
         },
     )
@@ -181,6 +183,10 @@ def assign_department_manager(
         .all()
     )
 
+    if not victim_user:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND, content="This user does not exist."
+        )
     for department in departments:
         if victim_user.id == department.department_manager:
             return JSONResponse(
@@ -314,6 +320,12 @@ def add_user_to_department(
 ):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     victim_user = db.query(User).filter_by(id=_body.user_id).first()
+
+    if not victim_user:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND, content="This user does not exist."
+        )
+
     department = (
         db.query(Department).filter_by(department_manager=victim_user.id).first()
     )

@@ -21,7 +21,6 @@ class SkillsRequestModel(BaseModel):
     BaseModel
     """
 
-    user_id: UUID
     skill_id: UUID
     level: int
     experience: int
@@ -31,5 +30,4 @@ class SkillsRequestModel(BaseModel):
 
 
 class DeleteSkillModel(BaseModel):
-    user_id: UUID
     skill_id: UUID

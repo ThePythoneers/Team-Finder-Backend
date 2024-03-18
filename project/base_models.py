@@ -40,3 +40,4 @@ class AssignUserModel(BaseModel):
 
 class AddCustomRoleToProjectModel(BaseModel):
     role_id: UUID
+    project_id: UUID

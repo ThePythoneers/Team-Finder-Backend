@@ -252,11 +252,13 @@ def get_available_employees(
             {
                 "id": str(i["id"]),
                 "email": i["email"],
+                "username": i["username"],
                 "organization_id": str(i["organization_id"]),
                 "department_id": str(i["department_id"]),
                 "method": [k for k in i["method"]],
                 "work_hours": total_work_hours,
                 "projects": [str(l.id) for l in i["projects"]],
+                "primary_roles": [i.role_name for i in i.primary_roles],
             }
             for i in available_employees
         ],
@@ -394,7 +396,7 @@ def add_custom_role_to_project(
     db: DbDependency, user: UserDependency, _body: AddCustomRoleToProjectModel
 ):
     action_user = db.query(User).filter_by(id=user["id"]).first()
-    project = db.query(Projects).filter_by(project_manager=action_user.id).first()
+    project = db.query(Projects).filter_by(project_manager=_body.project_id).first()
     role_to_add = db.query(Custom_Roles).filter_by(id=_body.role_id).first()
 
     if not project:

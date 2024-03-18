@@ -44,6 +44,7 @@ def create_allocation_proposal(
     action_user = db.query(User).filter_by(id=user["id"]).first()
     project = db.query(Projects).filter_by(project_manager=action_user.id).first()
     victim_user = db.query(User).filter_by(id=_body.user_id).first()
+
     if not "Project Manager" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -94,6 +95,11 @@ def create_allocation_proposal(
 
     for i in _body.roles:
         role = db.query(Custom_Roles).filter_by(id=i).first()
+        if not project in role.projects:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content="This role is not from this project.",
+            )
         if not role:
             return JSONResponse(
                 status_code=status.HTTP_404_NOT_FOUND,
