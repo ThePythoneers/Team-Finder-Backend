@@ -14,6 +14,7 @@ from database.models import (
     Notifications,
     Projects,
     User,
+    Users_Custom_Roles,
     WorkHours,
 )
 from database.db import SESSIONLOCAL
@@ -478,6 +479,13 @@ def accept_deallocation_proposal(db: DbDependency, user: UserDependency, _id: UU
         .filter_by(user_id=victim_user.id, project_id=project.id)
         .first()
     )
+    roles = (
+        db.query(Users_Custom_Roles)
+        .filter_by(user_id=victim_user.id, project_id=project.id)
+        .all()
+    )
+    if roles:
+        db.delete(roles)
     db.delete(work_hours)
     db.delete(proposal)
     db.commit()

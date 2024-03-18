@@ -289,6 +289,7 @@ class Projects(Base):
         "TechnologyStack", secondary=project_technology, back_populates="projects"
     )
     project_manager = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    deletable = Column(BOOLEAN, default=True)
 
 
 class TechnologyStack(Base):

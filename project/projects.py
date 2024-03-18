@@ -64,6 +64,12 @@ def create_project(db: DbDependency, user: UserDependency, _body: CreateProjectM
             content="You can only assign Not Started and Starting when creating a new project.",
         )
 
+    if not _body.project_period == "Fixed" or _body.project_period == "Ongoing":
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="Project period must be Fixed or Ongoing.",
+        )
+
     if _body.project_period == "Fixed" and not _body.deadline_date:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -123,7 +129,7 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
             status_code=400, content="Only a Project Manager can update a new project."
         )
 
-    if _body.project_period == "Fixed" and _body.project_period == "Ongoing":
+    if not _body.project_period == "Fixed" or _body.project_period == "Ongoing":
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content="Project period must be Fixed or Ongoing.",
@@ -147,12 +153,9 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
                 content="The deadline cannot be assigned before the start of the project.",
             )
 
-    if _body.work_hours:
-        if _body.work_hours < 0 or _body.work_hours > 8:
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content="Work hours needs to be a value between 1 and 8",
-            )
+    if not _body.project_status == project_id.project_status:
+        if project_id.project_status in ["In Progress", "Closing", "Closed"]:
+            project_id.deletable = False
 
     project_id.project_name = _body.project_name
     project_id.project_period = _body.project_period
@@ -160,7 +163,6 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
     project_id.deadline_date = _body.deadline_date
     project_id.project_status = _body.project_status
     project_id.description = _body.description
-    project_id.work_hours = _body.work_hours
 
     db.commit()
 
@@ -277,7 +279,10 @@ def get_project_info(db: DbDependency, user: UserDependency, _id: str):
         "project_status": project.project_status,
         "description": project.description,
         "users": [{"id": str(i.id), "username:": i.username} for i in project.users],
-        "project_roles": [i.custom_role_name for i in project.project_roles],
+        "project_roles": [
+            {"id": str(i.id), "role_name": i.custom_role_name}
+            for i in project.project_roles
+        ],
         "work_hours": project.work_hours,
         "technology_stack": [i.tech_name for i in project.technologies],
         "deallocated_users": [
@@ -308,11 +313,14 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
                 "project_name": i.project_name,
                 "project_period": i.project_period,
                 "start_date": str(i.start_date),
-                "deadline_date": str(i.deadline_date),
+                "deadline_date": str(i.deadline_date) if i.deadline_date else None,
                 "project_status": i.project_status,
                 "description": i.description,
                 "users": [{"id": str(i.id), "username:": i.username} for i in i.users],
-                "project_roles": [i.custom_role_name for i in i.project_roles],
+                "project_roles": [
+                    {"id": str(i.id), "role_name": i.custom_role_name}
+                    for i in i.project_roles
+                ],
                 "technology_stack": [
                     {"technology_name": i.tech_name, "id": str(i.id)}
                     for i in i.technologies

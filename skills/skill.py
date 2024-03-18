@@ -307,6 +307,12 @@ def verify_skill(db: DbDependency, user: UserDependency, _id: UUID):
             content="This user is not in your organization.",
         )
 
+    if not victim_user.department_id == action_user.department_id:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="This user is not in your department.",
+        )
+
     if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
