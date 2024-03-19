@@ -188,6 +188,12 @@ def delete_project(db: DbDependency, user: UserDependency, _id: UUID):
             status_code=status.HTTP_404_NOT_FOUND,
             content="This project has already been deleted or it does not exist.",
         )
+    if not project.first().deletable:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="This project can't be deleted because was in a state from [In Progress, Closing, Closed]",
+        )
+
     project.delete()
     db.commit()
 
@@ -304,39 +310,37 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
     projects = (
         db.query(Projects).filter_by(organization_id=action_user.organization_id).all()
     )
-    if not projects:
-        return []
     project_list = []
     for i in projects:
-
-        project_list.append(
-            {
-                "project_id": str(i.id),
-                "project_name": i.project_name,
-                "project_period": i.project_period,
-                "start_date": str(i.start_date),
-                "deadline_date": str(i.deadline_date) if i.deadline_date else None,
-                "project_status": i.project_status,
-                "description": i.description,
-                "users": [
-                    {"id": str(i.id), "username": i.username, "email": i.email}
-                    for i in i.users
-                ],
-                "project_roles": [
-                    {"id": str(i.id), "role_name": i.custom_role_name}
-                    for i in i.project_roles
-                ],
-                "technology_stack": [
-                    {"technology_name": i.tech_name, "id": str(i.id)}
-                    for i in i.technologies
-                ],
-                "deallocated_users": [
-                    {"id": str(j.id), "username": j.username, "email": i.email}
-                    for j in i.deallocated_users
-                ],
-                "project_manager": str(i.project_manager),
-            }
-        )
+        if action_user in i.users or action_user.id == i.project_manager:
+            project_list.append(
+                {
+                    "project_id": str(i.id),
+                    "project_name": i.project_name,
+                    "project_period": i.project_period,
+                    "start_date": str(i.start_date),
+                    "deadline_date": str(i.deadline_date) if i.deadline_date else None,
+                    "project_status": i.project_status,
+                    "description": i.description,
+                    "users": [
+                        {"id": str(i.id), "username": i.username, "email": i.email}
+                        for i in i.users
+                    ],
+                    "project_roles": [
+                        {"id": str(i.id), "role_name": i.custom_role_name}
+                        for i in i.project_roles
+                    ],
+                    "technology_stack": [
+                        {"technology_name": i.tech_name, "id": str(i.id)}
+                        for i in i.technologies
+                    ],
+                    "deallocated_users": [
+                        {"id": str(j.id), "username": j.username, "email": i.email}
+                        for j in i.deallocated_users
+                    ],
+                    "project_manager": str(i.project_manager),
+                }
+            )
 
     return JSONResponse(status_code=200, content=project_list)
 

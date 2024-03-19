@@ -7,7 +7,7 @@ import os
 
 env = dotenv_values(".env")
 
-DEBUG_LOCAL_SWITCH = False
+DEBUG_LOCAL_SWITCH = True
 
 if DEBUG_LOCAL_SWITCH:
     SQL_USERNAME = os.environ.get("LOCAL_SQL_USERNAME")

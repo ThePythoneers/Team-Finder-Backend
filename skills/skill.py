@@ -222,11 +222,11 @@ def get_skill_categories(db: DbDependency, user: UserDependency):
 def get_skill_category_by_id(db: DbDependency, user: UserDependency, _id: str):
     category = db.query(Skill_Category).filter_by(id=_id).first()
     action_user = db.query(User).filter_by(id=user["id"]).first()
-    if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content="You are not allowed to do this.",
-        )
+    # if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
+    #     return JSONResponse(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         content="You are not allowed to do this.",
+    #     )
     if not category:
         return []
     return category

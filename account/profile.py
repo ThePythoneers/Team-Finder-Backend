@@ -205,6 +205,7 @@ def get_skills_from_any_user(db: DbDependency, auth: UserDependency, _id: UUID):
                     str(i.training_description) if i.training_description else None
                 ),
                 "project_link": str(i.project_link) if i.project_link else None,
+                "verified": i.verified,
             }
         )
 
