@@ -351,6 +351,7 @@ def get_deallocation_proposal_from_department(db: DbDependency, user: UserDepend
             {
                 "proposal_id": str(i.id),
                 "project_id": str(i.project_id_deallocation),
+                "project_id": str(i.project_id_deallocation),
                 "user_id": str(i.user_id),
                 "reason": i.reason,
             }
@@ -430,6 +431,7 @@ def accept_deallocation_proposal(db: DbDependency, user: UserDependency, _id: UU
     proposal = db.query(DeallocationProposal).filter_by(id=_id).first()
     action_user = db.query(User).filter_by(id=user["id"]).first()
 
+    print(proposal.__dict__)
     if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,

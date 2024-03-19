@@ -82,6 +82,7 @@ def get_user_info(db: DbDependency, auth: UserDependency, user_id: UUID):
         "organization_name": user.organization.organization_name,
         "roles": [i.role_name for i in user.primary_roles],
         "department_id": (str(user.department_id) if user.department_id else None),
+        "projects": [str(i.id) for i in user.projects],
         "work_hours": total_work_hours,
     }
     return JSONResponse(content=user_data, status_code=status.HTTP_200_OK)
@@ -213,6 +214,7 @@ def get_skills_from_any_user(db: DbDependency, auth: UserDependency, _id: UUID):
                     str(i.training_description) if i.training_description else None
                 ),
                 "project_link": str(i.project_link) if i.project_link else None,
+                "verified": i.verified,
             }
         )
 

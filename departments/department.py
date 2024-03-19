@@ -154,6 +154,11 @@ def delete_department(
         )
         .first()
     )
+    if check_department.department_users:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="You cannot delete departments with users still assigned.",
+        )
     if not check_department:
         return JSONResponse(status_code=404, content="This department does not exist.")
     if check_department.organization_id != action_user.organization_id:

@@ -40,6 +40,7 @@ metadata = MetaData()
 metadata.reflect(ENGINE)
 
 DEBUG_RESET_DATABASE_WHEN_STARTING = False
+
 DEBUG_HELPFUL_ENDPOINTS = True
 
 app.add_middleware(

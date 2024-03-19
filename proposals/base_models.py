@@ -12,6 +12,7 @@ class CreateAllocationProposal(BaseModel):
 
 
 class CreateDeallocationProposal(BaseModel):
+    project_id: UUID
     user_id: UUID
     comment: str
     project_id: UUID
