@@ -280,7 +280,13 @@ def get_available_employees(
 
 @router.get("/{_id}")
 def get_project_info(db: DbDependency, user: UserDependency, _id: str):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
     project = db.query(Projects).filter_by(id=_id).first()
+    if project.organization_id != action_user.organization_id:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content="You are not allowed to view projects from another organization",
+        )
     project_dict = {
         "project_id": str(project.id),
         "project_name": project.project_name,

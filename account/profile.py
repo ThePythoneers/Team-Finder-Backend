@@ -125,7 +125,12 @@ def assign_skill_to_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content="You already have this skill equiped.",
         )
-
+    project = db.query(Projects).filter_by(id=_body.project_link).first()
+    if not project:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="The project linked to project_link does not exist.",
+        )
     create_user_skills_model = User_Skills(
         user_id=action_user.id,
         skill_id=_body.skill_id,
@@ -147,6 +152,48 @@ def assign_skill_to_user(
             db.add(notification)
     db.add(create_user_skills_model)
     db.commit()
+
+
+@router.get("/skills/project-link/{_id}")
+def get_project_link_info(db: DbDependency, user: UserDependency, _id: UUID):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    user_skill = (
+        db.query(User_Skills).filter_by(user_id=action_user.id, skill_id=_id).first()
+    )
+    if not user_skill.project_link:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="This skill does not have a project link",
+        )
+    project = db.query(Projects).filter_by(id=user_skill.project_link).first()
+
+    if project.organization_id != action_user.organization_id:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content="You are not allowed to view projects from another organization",
+        )
+
+    project_dict = {
+        "project_id": str(project.id),
+        "project_name": project.project_name,
+        "project_period": project.project_period,
+        "start_date": str(project.start_date),
+        "deadline_date": str(project.deadline_date),
+        "project_status": project.project_status,
+        "description": project.description,
+        "users": [{"id": str(i.id), "username:": i.username} for i in project.users],
+        "project_roles": [
+            {"id": str(i.id), "role_name": i.custom_role_name}
+            for i in project.project_roles
+        ],
+        "technology_stack": [i.tech_name for i in project.technologies],
+        "deallocated_users": [
+            {"id": str(i.id), "username:": i.username}
+            for i in project.deallocated_users
+        ],
+        "project_manager": str(project.project_manager),
+    }
+    return project_dict
 
 
 @router.patch("/skills")

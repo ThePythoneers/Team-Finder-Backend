@@ -98,7 +98,7 @@ class User_Skills(Base):
     skill_experience = Column(INTEGER)
     training_title = Column(String)
     training_description = Column(String)
-    project_link = Column(String)
+    project_link = Column(UUID, ForeignKey("projects.id"))
     verified = Column(BOOLEAN, default=False)
     user = relationship("User", back_populates="skill_level")
 
