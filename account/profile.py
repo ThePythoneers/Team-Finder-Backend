@@ -129,7 +129,14 @@ def assign_skill_to_user(
     )
 
     # ! TODO: new column verified true / false (false by default)
-
+    if action_user.department:
+        if action_user.department.department_manager:
+            notification = Notifications(
+                type="VALIDATION",
+                to_manager=action_user.department.department_manager,
+                for_user=action_user.id,
+            )
+            db.add(notification)
     db.add(create_user_skills_model)
     db.commit()
 

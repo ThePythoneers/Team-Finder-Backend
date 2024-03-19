@@ -43,7 +43,7 @@ def create_allocation_proposal(
     db: DbDependency, user: UserDependency, _body: CreateAllocationProposal
 ):
     action_user = db.query(User).filter_by(id=user["id"]).first()
-    project = db.query(Projects).filter_by(project_manager=action_user.id).first()
+    project = db.query(Projects).filter_by(id=_body.project_id).first()
     victim_user = db.query(User).filter_by(id=_body.user_id).first()
 
     if not "Project Manager" in [i.role_name for i in action_user.primary_roles]:
@@ -134,7 +134,7 @@ def create_deallocation_proposal(
 ):
     # known issue: work_hours does not reset as intended
     action_user = db.query(User).filter_by(id=user["id"]).first()
-    project = db.query(Projects).filter_by(project_manager=action_user.id).first()
+    project = db.query(Projects).filter_by(id=_body.project_id).first()
     victim_user = db.query(User).filter_by(id=_body.user_id).first()
     if not "Project Manager" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
@@ -350,11 +350,9 @@ def get_deallocation_proposal_from_department(db: DbDependency, user: UserDepend
         content=[
             {
                 "proposal_id": str(i.id),
-                "project_id": str(i.project_id_allocation),
+                "project_id": str(i.project_id_deallocation),
                 "user_id": str(i.user_id),
-                "comments": i.comments,
-                "work_hours": i.work_hours,
-                "proposed_roles": [str(j.id) for j in i.roles],
+                "reason": i.reason,
             }
             for i in proposals
         ],
@@ -473,7 +471,7 @@ def accept_deallocation_proposal(db: DbDependency, user: UserDependency, _id: UU
         )
 
     project.users.remove(victim_user)
-
+    project.deallocated_users.append(victim_user)
     work_hours = (
         db.query(WorkHours)
         .filter_by(user_id=victim_user.id, project_id=project.id)
@@ -484,8 +482,10 @@ def accept_deallocation_proposal(db: DbDependency, user: UserDependency, _id: UU
         .filter_by(user_id=victim_user.id, project_id=project.id)
         .all()
     )
+
     if roles:
-        db.delete(roles)
+        for i in roles:
+            db.delete(i)
     db.delete(work_hours)
     db.delete(proposal)
     db.commit()

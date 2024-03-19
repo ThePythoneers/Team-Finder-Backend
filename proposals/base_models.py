@@ -8,7 +8,10 @@ class CreateAllocationProposal(BaseModel):
     comment: str
     work_hours: int
     roles: list[UUID]
+    project_id: UUID
+
 
 class CreateDeallocationProposal(BaseModel):
     user_id: UUID
     comment: str
+    project_id: UUID

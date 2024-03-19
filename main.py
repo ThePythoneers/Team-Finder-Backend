@@ -3,10 +3,8 @@ main.py is the head of the project in which all routers are included and
 all errors are handled. 
 """
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
 from sqlalchemy.schema import MetaData
 import uvicorn
 import colorama
@@ -14,7 +12,7 @@ import colorama
 from auth import authentication
 from account import profile
 from database.create_roles import create_roles
-from database.db import ENGINE, SESSIONLOCAL, Base, DEBUG_LOCAL_SWITCH
+from database.db import ENGINE, SESSIONLOCAL, DEBUG_LOCAL_SWITCH
 from database import models
 from custom_roles import croles
 from organization import organizations
@@ -41,8 +39,15 @@ app = FastAPI()
 metadata = MetaData()
 metadata.reflect(ENGINE)
 
-DEBUG_RESET_DATABASE_WHEN_STARTING = True
+DEBUG_RESET_DATABASE_WHEN_STARTING = False
 DEBUG_HELPFUL_ENDPOINTS = True
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def get_db():
@@ -76,27 +81,18 @@ if DEBUG_HELPFUL_ENDPOINTS:
     app.include_router(debugging.router)
 
 
-@app.exception_handler(RequestValidationError)
-# pylint: disable=unused-argument
-def validation_exception_handler(request: Request, error: RequestValidationError):
-    """
-    In case of an empty field in a pydantic BaseModel, we don't return the whole
-    message.
-    """
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content="empty non-null field or bad request",
-    )
+# @app.exception_handler(RequestValidationError)
+# # pylint: disable=unused-argument
+# def validation_exception_handler(request: Request, error: RequestValidationError):
+#     """
+#     In case of an empty field in a pydantic BaseModel, we don't return the whole
+#     message.
+#     """
+#     return JSONResponse(
+#         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+#         content="empty non-null field or bad request",
+#     )
 
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.get("/")
 def root():

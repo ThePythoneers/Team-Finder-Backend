@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from database.models import (
     Department,
     Department_projects,
+    Notifications,
     Skill,
     Skill_Category,
     User,
@@ -14,7 +15,7 @@ from database.models import (
 )
 from database.db import SESSIONLOCAL
 from auth import authentication
-from skills.base_models import CreateSkillModel, EditSkillCategoryModel
+from skills.base_models import CreateSkillModel, EditSkillCategoryModel, EditSkillModel
 
 
 router = APIRouter(prefix="/skill", tags={"Skills"})
@@ -49,7 +50,12 @@ def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel
     if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content="Only a department manager can modify skills.",
+            content="Only a department manager can create skills.",
+        )
+    if not _body.skill_category:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="Skills must have a skill category.",
         )
 
     create_skill_model = Skill(
@@ -77,6 +83,52 @@ def create_skill(db: DbDependency, user: UserDependency, _body: CreateSkillModel
 
     return JSONResponse(
         status_code=status.HTTP_200_OK, content="Skill created successfully."
+    )
+
+
+@router.patch("/")
+def edit_skill(db: DbDependency, user: UserDependency, _body: EditSkillModel):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    check_name = db.query(Skill).filter_by(skill_name=_body.skill_name).first()
+
+    if check_name:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="A skill with the same name already exists.",
+        )
+
+    if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="Only a department manager can modify skills.",
+        )
+    if not _body.skill_category:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="Skills must have a skill category.",
+        )
+
+    skill = db.query(Skill).filter_by(id=_body.skill_id).first()
+    if not skill:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content="This skill does not exist.",
+        )
+
+    for i in _body.skill_category:
+        if not db.query(Skill_Category).filter_by(id=i).first():
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content="One or more skills do not exist.",
+            )
+
+    skill.skill_name = _body.skill_name
+    skill.skill_description = _body.description
+
+    db.commit()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content="Skill edited successfully."
     )
 
 
@@ -295,6 +347,10 @@ def get_all_skills_from_department(db: DbDependency, user: UserDependency):
 def verify_skill(db: DbDependency, user: UserDependency, _id: UUID):
     action_user = db.query(User).filter_by(id=user["id"]).first()
     user_skill = db.query(User_Skills).filter_by(id=_id).first()
+    if not user_skill:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND, content="Invalid skill id"
+        )
     victim_user = db.query(User).filter_by(id=user_skill.user_id).first()
 
     if not victim_user.organization_id == action_user.organization_id:
@@ -317,6 +373,7 @@ def verify_skill(db: DbDependency, user: UserDependency, _id: UUID):
 
     user_skill.verified = not user_skill.verified
     db.commit()
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=f"Skill {'un' if not user_skill.verified else ''}verified",
@@ -364,4 +421,41 @@ def get_all_unverified_skills(db: DbDependency, user: UserDependency):
             }
             for i in roles
         ],
+    )
+
+
+@router.post("/verify/reject/{_id}")
+def reject_skill_verification(db: DbDependency, user: UserDependency, _id: UUID):
+    action_user = db.query(User).filter_by(id=user["id"]).first()
+    user_skill = db.query(User_Skills).filter_by(id=_id).first()
+    if not user_skill:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND, content="Invalid skill id"
+        )
+    victim_user = db.query(User).filter_by(id=user_skill.user_id).first()
+
+    if not victim_user.organization_id == action_user.organization_id:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="This user is not in your organization.",
+        )
+
+    if not victim_user.department_id == action_user.department_id:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="This user is not in your department.",
+        )
+
+    if not "Department Manager" in [i.role_name for i in action_user.primary_roles]:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="Only Department Managers are allowed to verify skills.",
+        )
+
+    db.delete(user_skill)
+    db.commit()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=f"Skill verification rejected, the skill has been removed from the user.",
     )

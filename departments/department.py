@@ -1,5 +1,4 @@
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
@@ -214,8 +213,7 @@ def assign_department_manager(
     if department.department_manager:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content="This department already has a manager assigned. \
-                  Consider deleting him first the adding another person.",
+            content="This department already has a manager assigned. Consider deleting him first the adding another person.",
         )
 
     if victim_user.organization_id != department.organization_id:

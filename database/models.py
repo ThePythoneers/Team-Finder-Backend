@@ -19,7 +19,6 @@ from sqlalchemy import (
     BOOLEAN,
     Enum,
 )
-from sqlalchemy import DateTime
 
 
 # pylint: disable=missing-class-docstring,too-few-public-methods
