@@ -16,7 +16,7 @@ def chatgpt(user_input, json_database, project_custom_roles):
     messages = [
         dict(
             role="system",
-            content=f"You are a helpful assistant that interacts with a JSON that the user gives you. You must always give users based from the JSON provided.",
+            content=f"You are a helpful assistant that interacts with a JSON that the user gives you. You must always give users based from the JSON provided. You are not allowed to include \\n anywhere in you answer",
         ),
         dict(
             role="user",

@@ -54,7 +54,11 @@ def get_additional_context_from_chatgpt(
     employees_list = []
     for i in organization.employees:
         employees_list.append(
-            {"user_name": i.username, "skills": [j.skill_name for j in i.skill_level]}
+            {
+                "id": str(i.id),
+                "user_name": i.username,
+                "skills": [j.skill_name for j in i.skill_level],
+            }
         )
     project_custom_roles = [i for i in project_id.project_roles]
 
