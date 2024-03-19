@@ -12,7 +12,14 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from database.db import SESSIONLOCAL
-from database.models import Projects, Skill, User, Skill_Category, WorkHours
+from database.models import (
+    Notifications,
+    Projects,
+    Skill,
+    User,
+    Skill_Category,
+    WorkHours,
+)
 from database.models import User_Skills
 
 from auth import authentication
@@ -139,6 +146,57 @@ def assign_skill_to_user(
             )
             db.add(notification)
     db.add(create_user_skills_model)
+    db.commit()
+
+
+@router.patch("/skills")
+def edit_skill_from_user(
+    db: DbDependency, auth: UserDependency, _body: SkillsRequestModel
+):
+    """
+    Users can assign themselves skills including their level and experience.
+    """
+    action_user = db.query(User).filter_by(id=auth["id"]).first()
+    # 1 – Learns, 2 – Knows, 3 – Does, 4 – Helps, 5 – Teaches
+    if not 0 < _body.level < 6:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST, content="Invalid skill level."
+        )
+    # 1 - 0-6 months, 2 - 6-12 months, 3 - 1-2 years
+    # 4 - 2-4 years, 5 - 4-7 years, 6 - >7 years
+    if not 0 < _body.experience < 7:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST, content="Invalid skill experience."
+        )
+
+    user_skill = (
+        db.query(User_Skills)
+        .filter_by(user_id=action_user.id, skill_id=_body.skill_id)
+        .first()
+    )
+    if not user_skill:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content="This skill does not exist.",
+        )
+
+    user_skill.verified = False
+    user_skill.skill_level = _body.level
+    user_skill.skill_experience = _body.experience
+    user_skill.training_title = _body.training_title
+    user_skill.training_description = _body.training_description
+    user_skill.project_link = _body.project_link
+
+    # ! TODO: new column verified true / false (false by default)
+    if action_user.department:
+        if action_user.department.department_manager:
+            notification = Notifications(
+                type="VALIDATION",
+                to_manager=action_user.department.department_manager,
+                for_user=action_user.id,
+            )
+            db.add(notification)
+
     db.commit()
 
 
