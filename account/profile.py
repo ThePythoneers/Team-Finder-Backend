@@ -125,12 +125,13 @@ def assign_skill_to_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content="You already have this skill equiped.",
         )
-    project = db.query(Projects).filter_by(id=_body.project_link).first()
-    if not project:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content="The project linked to project_link does not exist.",
-        )
+    if _body.project_link:
+        project = db.query(Projects).filter_by(id=_body.project_link).first()
+        if not project:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content="The project linked to project_link does not exist.",
+            )
     create_user_skills_model = User_Skills(
         user_id=action_user.id,
         skill_id=_body.skill_id,
@@ -141,7 +142,6 @@ def assign_skill_to_user(
         project_link=_body.project_link,
     )
 
-    # ! TODO: new column verified true / false (false by default)
     if action_user.department:
         if action_user.department.department_manager:
             notification = Notifications(

@@ -154,17 +154,15 @@ def update_project(db: DbDependency, user: UserDependency, _body: UpdateProjectM
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content="The deadline cannot be assigned before the start of the project.",
             )
-
-    if not _body.project_status == project_id.project_status:
-        if project_id.project_status in ["In Progress", "Closing", "Closed"]:
-            project_id.deletable = False
-
     project_id.project_name = _body.project_name
     project_id.project_period = _body.project_period
     project_id.start_date = _body.start_date
     project_id.deadline_date = _body.deadline_date
     project_id.project_status = _body.project_status
     project_id.description = _body.description
+
+    if project_id.project_status in ["In Progress", "Closing", "Closed"]:
+        project_id.deletable = False
 
     db.commit()
 
@@ -236,18 +234,19 @@ def get_available_employees(
 
         if _body.close_to_finish:
             for j in i.projects:
-                d1 = j.deadline_date
-                d2 = datetime.today()
-                print(d1)
-                print(d2)
-                print(((d1 - d2)).total_seconds())
-                print(_body.deadline * 604800)
+                if j.deadline_date:
+                    d1 = j.deadline_date
+                    d2 = datetime.today()
+                    print(d1)
+                    print(d2)
+                    print(((d1 - d2)).total_seconds())
+                    print(_body.deadline * 604800)
 
-                if (
-                    (d1 - d2)
-                ).total_seconds() < _body.deadline * 604800:  # seconds in a week
+                    if (
+                        (d1 - d2)
+                    ).total_seconds() < _body.deadline * 604800:  # seconds in a week
 
-                    i.__dict__["method"].append("close_to_finish")
+                        i.__dict__["method"].append("close_to_finish")
 
         if _body.unavailable and total_work_hours >= 8:
             i.__dict__["method"].append("unavailable")
@@ -320,8 +319,16 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
     project_list = []
     for i in projects:
         if action_user in i.users or action_user.id == i.project_manager:
+            proposed_to_project = (
+                db.query(AllocationProposal).filter_by(project_id_allocation=i.id).all()
+            )
+            users = []
+            for prop in proposed_to_project:
+                user = db.query(User).filter_by(id=prop.user_id).first()
+                users.append({"id": str(user.id), "username": user.username,  "email": user.email})
             project_list.append(
                 {
+                    "proposed_users": users,
                     "project_id": str(i.id),
                     "project_name": i.project_name,
                     "project_period": i.project_period,
@@ -342,7 +349,7 @@ def get_all_projects_info(db: DbDependency, user: UserDependency):
                         for i in i.technologies
                     ],
                     "deallocated_users": [
-                        {"id": str(j.id), "username": j.username, "email": i.email}
+                        {"id": str(j.id), "username": j.username, "email": j.email}
                         for j in i.deallocated_users
                     ],
                     "project_manager": str(i.project_manager),
