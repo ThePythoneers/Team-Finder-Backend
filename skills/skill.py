@@ -121,6 +121,8 @@ def edit_skill(db: DbDependency, user: UserDependency, _body: EditSkillModel):
                 status_code=status.HTTP_404_NOT_FOUND,
                 content="One or more skills do not exist.",
             )
+        
+    skill.skill_category = _body.skill_category
 
     skill.skill_name = _body.skill_name
     skill.skill_description = _body.description

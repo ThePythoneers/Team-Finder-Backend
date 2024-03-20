@@ -191,8 +191,8 @@ def assign_department_manager(
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND, content="This user does not exist."
         )
-    for department in departments:
-        if victim_user.id == department.department_manager:
+    for i in departments:
+        if victim_user.id == i.department_manager:
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content="This user is already a manager for another department",
